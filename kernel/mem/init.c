@@ -86,9 +86,6 @@ void mem_init(struct boot_info *boot_info)
 	 */
 	npages = MIN(BOOT_MAP_LIM, highest_addr) / PAGE_SIZE;
 
-	/* Remove this line when you're ready to test this function. */
-	panic("mem_init: This function is not finished\n");
-
 	/*
 	 * Allocate an array of npages 'struct page_info's and store it in 'pages'.
 	 * The kernel uses this array to keep track of physical pages: for each
@@ -114,6 +111,7 @@ void mem_init(struct boot_info *boot_info)
 
 	/* Check the kernel PML4. */
 	lab2_check_pml4();
+	panic("at the disco");
 
 	/* Load the kernel PML4. */
 
@@ -146,9 +144,19 @@ void page_init(struct boot_info *boot_info)
 	 *  3) mark the page as in use by setting pp_free to zero.
 	 *  4) set the order pp_order to zero.
 	 */
-	for (i = 0; i < npages; ++i) {
-		/* LAB 1: your code here. */
-	}
+  for (i = 0; i < npages; ++i) {
+    /* LAB 1: your code here. */
+    page = &pages[i];
+
+    // call list_init() to initialize the linked list node.
+    list_init(&page->pp_node);
+    // set the reference count pp_ref to zero.
+    page->pp_ref = 0;
+    // mark the page as in use by setting pp_free to zero.
+    page->pp_free = 0;
+    // set the order pp_order to zero.
+    page->pp_order = 0;
+  }
 
 	entry = (struct mmap_entry *)KADDR(boot_info->mmap_addr);
 	end = PADDR(boot_alloc(0));
@@ -165,9 +173,42 @@ void page_init(struct boot_info *boot_info)
 	 *  - boot_info->elf_hdr points to the ELF header.
 	 *  - Any address in [KERNEL_LMA, end) is part of the kernel.
 	 */
-	for (i = 0; i < boot_info->mmap_len; ++i, ++entry) {
-		/* LAB 1: your code here. */
-	}
+  for (i = 0; i < boot_info->mmap_len; ++i, ++entry) {
+    /* LAB 1: your code here. */
+
+    // Ignore the entry if the region is not free memory.
+    if (entry->type != MMAP_FREE) {
+      continue;
+    }
+
+    // Iterate through the pages in the region.
+    size_t j;
+    size_t start = entry->addr / PAGE_SIZE;
+    size_t fin = (entry->addr + entry->len) / PAGE_SIZE;
+
+    for (j = start; j < fin; ++j) {
+      page = &pages[j];
+      physaddr_t physaddr = page2pa(page);
+
+      // Hand the page to the buddy allocator by calling page_free()
+      // If the physical address is not above BOOT_MAP_LIM or reserved.
+      if (physaddr >= (uintptr_t)(BOOT_MAP_LIM)) {
+        continue;
+      } else if (physaddr == 0) {
+        continue;
+      } else if (physaddr == (uintptr_t)boot_info->elf_hdr) {
+        continue;//RESERVED (IVT/BIOS , ELF HEADER)
+      } else if (physaddr >= KERNEL_LMA && physaddr < end) {
+        continue;//RESERVED (KERNEL DATA)
+      } else if (physaddr == PAGE_ADDR(PADDR(boot_info))) {
+        continue;
+      } else if (entry->type != MMAP_FREE) {
+        continue;
+      } else {
+        page_free(page);
+      }
+    }
+  }
 }
 
 /* Extend the buddy allocator by initializing the page structure and memory

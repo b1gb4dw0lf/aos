@@ -86,8 +86,33 @@ size_t count_total_free_pages(void)
  */
  struct page_info *buddy_split(struct page_info *lhs, size_t req_order)
 {
-	/* LAB 1: your code here. */
-	return NULL;
+  struct page_info *rhs;
+  uint8_t order = lhs->pp_order;
+  uintptr_t buddy_address;
+  size_t scale, page_index, buddy_index;
+  list_remove(&lhs->pp_node);
+
+  while(order > req_order && order > 0) {
+    order--;
+
+    scale = (size_t) 1 << order; // pagen
+
+    // Get the page index
+    page_index = PAGE_INDEX(page2pa(lhs));
+    // Get the buddy at order k-1
+    buddy_index = page_index + scale;
+    buddy_address = buddy_index * PAGE_SIZE;
+    rhs = pa2page(buddy_address);
+
+    // Set the order of both to k-1
+    lhs->pp_order = order;
+    rhs->pp_order = order;
+    rhs->pp_free = 1;
+
+    //Add rhs to free list
+    list_insert_after(page_free_list + rhs->pp_order, &rhs->pp_node);
+  }
+  return lhs;
 }
 
 /* Merges the buddy of the page with the page if the buddy is free to form
@@ -108,8 +133,50 @@ size_t count_total_free_pages(void)
  */
 struct page_info *buddy_merge(struct page_info *page)
 {
-	/* LAB 1: your code here. */
-	return NULL;
+  uintptr_t page_address, buddy_index, page_index, buddy_address;
+  struct page_info *buddy = NULL;
+
+  assert(page->pp_ref == 0);
+
+  // Continue if max order is not reached
+  if(page->pp_order < (BUDDY_MAX_ORDER - 1)) {
+    size_t scale = (size_t) 1 << (page->pp_order);
+    page_address = page2pa(page);
+    page_index = PAGE_INDEX(page_address);
+
+    // Determine if the page is on the left or right
+    if((page_index / scale) % 2 == 0) {
+      buddy_index = page_index + scale;
+    } else {
+      buddy_index = page_index - scale;
+    }
+
+    buddy_address = buddy_index * PAGE_SIZE;
+    // TODO This part might be problematic
+    // Return if buddy is out of bounds?
+    if(PAGE_INDEX(buddy_address) >= npages) {
+      return page;
+    }
+
+    buddy = pa2page(buddy_address);
+    if(buddy->pp_order == page->pp_order && buddy->pp_free && page->pp_free) {
+      list_remove(&buddy->pp_node);
+      list_remove(&page->pp_node);
+
+      // Call recursively with the left page
+      if(page_index < buddy_index) {
+        page->pp_order = page->pp_order + 1;
+        buddy->pp_free = 0;
+        return buddy_merge(page);
+      } else {
+        buddy->pp_order = buddy->pp_order + 1;
+        page->pp_free = 0;
+        return buddy_merge(buddy);
+      }
+    }
+  }
+
+  return page;
 }
 
 /* Given the order req_order, attempts to find a page of that order or a larger
@@ -121,8 +188,26 @@ struct page_info *buddy_merge(struct page_info *page)
  */
 struct page_info *buddy_find(size_t req_order)
 {
-	/* LAB 1: your code here. */
-	return NULL;
+  struct list *node;
+  struct page_info *res;
+  struct page_info *page;
+
+  for(size_t order = req_order; order < BUDDY_MAX_ORDER; order++) {
+    list_foreach(page_free_list + order, node) {
+      page = container_of(node, struct page_info, pp_node);
+
+      if(page->pp_free && order == req_order) {
+        // Found a free page with the requested order
+        return page;
+      } else if (order > req_order && page->pp_free){
+        // We found a free page with a greater order so we need to split
+        return buddy_split(page, req_order);
+      }
+    }
+  }
+
+  //this means no requested order page could be find, so we're going to icnr
+  return NULL;
 }
 
 /*
@@ -142,8 +227,30 @@ struct page_info *buddy_find(size_t req_order)
  */
 struct page_info *page_alloc(int alloc_flags)
 {
-	/* LAB 1: your code here. */
-	return NULL;
+  struct page_info *page = alloc_flags & ALLOC_HUGE ?
+                           buddy_find(BUDDY_2M_PAGE) :
+                           buddy_find(BUDDY_4K_PAGE);
+
+  if (page == NULL) {
+    return NULL;
+  }
+
+  // Make sure there is no use after free
+#ifdef BONUS_LAB1
+  assert(page->pp_ref == 0);
+#endif
+
+  page->pp_free = 0;
+  list_remove(&page->pp_node);
+  if(list_is_empty(page_free_list + page->pp_order)) {
+    list_init(page_free_list + page->pp_order);
+  }
+
+  if (alloc_flags & ALLOC_ZERO) {
+    memset(page2kva(page), '\0', (size_t)1<<page->pp_order * PAGE_SIZE);
+  }
+
+  return page;
 }
 
 /*
@@ -155,7 +262,29 @@ struct page_info *page_alloc(int alloc_flags)
  */
 void page_free(struct page_info *pp)
 {
-	/* LAB 1: your code here. */
+  struct page_info *res;
+
+  // Make sure the page has no refs
+  assert(pp->pp_ref == 0);
+  // Make sure the page is not out of bounds
+  assert(PAGE_INDEX(page2pa(pp)) >= 0 && PAGE_INDEX(page2pa(pp)) <= npages);
+
+#ifdef BONUS_LAB1
+  // Make sure the page won't be freed again
+	assert(!pp->pp_free);
+	// Make sure the page is aligned
+    assert(page2pa(pp) % PAGE_SIZE == 0);
+#endif
+
+  list_init(&pp->pp_node);
+  pp->pp_free=1; //Mark page as free
+
+  if(pp->pp_order == (BUDDY_MAX_ORDER -1)) {
+    list_insert_after(page_free_list + pp->pp_order, &pp->pp_node); //Add node to free list
+  } else {
+    res = buddy_merge(pp); // Merge page with buddies TODO implement this
+    list_insert_after(page_free_list + res->pp_order, &res->pp_node); //Add node to free list
+  }
 }
 
 /*
@@ -217,7 +346,7 @@ int buddy_map_chunk(struct page_table *pml4, size_t index)
 
 	index = ROUNDDOWN(index, nblocks);
 	base = pages + index;
-	
+
 	for (i = 0; i < nalloc; ++i) {
 		page = page_alloc(ALLOC_ZERO);
 
