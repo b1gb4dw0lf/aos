@@ -247,7 +247,8 @@ struct page_info *page_alloc(int alloc_flags)
   }
 
   if (alloc_flags & ALLOC_ZERO) {
-    memset(page2kva(page), '\0', (size_t)1<<page->pp_order * PAGE_SIZE);
+    uint64_t page_size = (1<<page->pp_order) * PAGE_SIZE;
+    memset(page2kva(page), 0, page_size);
   }
 
   return page;
