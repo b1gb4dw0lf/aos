@@ -17,6 +17,7 @@ int ptbl_alloc(physaddr_t *entry, uintptr_t base, uintptr_t end,
   if (!(*entry & PAGE_PRESENT)) {
     struct page_info * page = page_alloc(ALLOC_ZERO);
     page->pp_ref += 1;
+    assert(page_aligned(page2pa(page)));
     *entry = page2pa(page) | PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
   }
 
