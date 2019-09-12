@@ -125,7 +125,9 @@ int page_insert(struct page_table *pml4, struct page_info *page, void *va,
 	info.pml4 = pml4;
 	info.flags = flags;
 
-	return walk_page_range(pml4, va, (void *)((uintptr_t)va + PAGE_SIZE),
+	size_t page_size = (1<<page->pp_order) * PAGE_SIZE;
+
+	return walk_page_range(pml4, va, (void *)((uintptr_t)va + page_size),
 		&walker);
 }
 
