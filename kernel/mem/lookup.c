@@ -17,7 +17,6 @@ static int lookup_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
 	if(*entry & PAGE_PRESENT) {
 		info->entry = entry;
-		cprintf("page exists ! : %p\n", entry);
 	}
 
 	/* LAB 2: your code here. */
@@ -31,7 +30,6 @@ static int lookup_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct lookup_info *info = walker->udata;
 	if((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE)) {
-		cprintf("page exists ! : %p\n", entry);
 		info->entry = entry;
 	}
 
