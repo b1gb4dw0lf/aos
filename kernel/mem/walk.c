@@ -53,6 +53,7 @@ static int ptbl_walk_range(struct page_table *ptbl, uintptr_t base,
   for (addr = base; next < end; addr = sign_extend(next + 1)) {
     next = ptbl_end(addr);
     entry = &ptbl->entries[PAGE_TABLE_INDEX(addr)];
+    entry = KADDR((physaddr_t) entry);
 
     if (walker->get_pte) walker->get_pte(entry, addr, next, walker);
     if (!*entry && walker->pte_hole) walker->pte_hole(addr, next, walker);
@@ -82,6 +83,7 @@ static int pdir_walk_range(struct page_table *pdir, uintptr_t base,
   for (addr = base; next < end; addr = sign_extend(next + 1)) {
     next = pdir_end(addr);
     entry = &pdir->entries[PAGE_DIR_INDEX(addr)];
+    entry = KADDR((physaddr_t) entry);
 
     if (walker->get_pde) walker->get_pde(entry, addr, next, walker);
     if (!*entry && walker->pte_hole) walker->pte_hole(addr, next, walker);
@@ -116,9 +118,13 @@ static int pdpt_walk_range(struct page_table *pdpt, uintptr_t base,
 
   for (addr = base; next < end; addr = sign_extend(next + 1)) {
     next = pdpt_end(addr);
-    entry = &pdpt->entries[PDPT_INDEX(addr)];
+    //cprintf("addr %p, base %p, next %p, end %p\n", addr, base, next, end);
+    entry = &pdpt->entries[PDPT_INDEX(addr)] ;
+    entry = KADDR((physaddr_t) entry);
+
 
     if (walker->get_pdpte) walker->get_pdpte(entry, addr, next, walker);
+    //cprintf("entry : %p\n", entry);
     if (!*entry && walker->pte_hole) walker->pte_hole(addr, next, walker);
 
     if ((*entry & PAGE_PRESENT) && !(*entry & PAGE_HUGE)) {
