@@ -35,10 +35,7 @@ static int boot_map_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct boot_map_info *info = walker->udata;
 
-	cprintf("PDE: %p Huge: %d\n", *entry, info->pa&PAGE_HUGE);
-
 	if (!(info->pa & PAGE_HUGE)) {
-	  cprintf("Alloccing %p\n", info->pa);
 	  ptbl_alloc(entry, base, end, walker);
 	} else {
     panic("WHAT THE HEL\n");
@@ -94,8 +91,6 @@ void boot_map_kernel(struct page_table *pml4, struct elf *elf_hdr)
 {
 	struct elf_proghdr *prog_hdr =
 	    (struct elf_proghdr *)((char *)elf_hdr + elf_hdr->e_phoff);
-	uint64_t flags;
-	size_t i;
 
 	boot_map_region(pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
