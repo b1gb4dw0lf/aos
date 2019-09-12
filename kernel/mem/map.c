@@ -129,6 +129,7 @@ void boot_map_kernel(struct page_table *pml4, struct elf *elf_hdr)
 {
 	struct elf_proghdr *prog_hdr =
 	    (struct elf_proghdr *)((char *)elf_hdr + elf_hdr->e_phoff);
+  uint64_t flags = 0;
 
 	// Map first 8mb to virtual addressesz
 	boot_map_region(pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
@@ -136,25 +137,24 @@ void boot_map_kernel(struct page_table *pml4, struct elf *elf_hdr)
 
   // Iterates the program headers
   size_t a = elf_hdr->e_phnum;
-
   for (size_t i = 0; i < a; i++, prog_hdr++) {
-    // Ignores program headers below KERNEL_VMA
-    if (prog_hdr->p_va < KERNEL_VMA) continue;
-
-    cprintf("%p %p %p [%c%c%c%c]\"\n",
-        prog_hdr->p_pa, (void *)prog_hdr->p_va, PADDR((void *)KERNEL_VMA),
+    cprintf("PH PA: %p PH VA: %p [%c%c%c%c] --- KERNEL_VMA: %p\n",
+            prog_hdr->p_pa, (void *)prog_hdr->p_va,
             (prog_hdr->p_flags & PAGE_PRESENT) ? 'r' : '-',
             (prog_hdr->p_flags & PAGE_WRITE) ? 'w' : '-',
             (prog_hdr->p_flags & PAGE_NO_EXEC) ? '-' : 'x',
-            (prog_hdr->p_flags & PAGE_USER) ? 'u' : '-'
+            (prog_hdr->p_flags & PAGE_USER) ? 'u' : '-', KERNEL_VMA
     );
+    // Ignores program headers below KERNEL_VMA
+    if (prog_hdr->p_va < KERNEL_VMA) continue;
+
+    if (!(prog_hdr->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
+    if (prog_hdr->p_flags & ELF_PROG_FLAG_READ) flags |= PAGE_PRESENT;
+    if (prog_hdr->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
 
     // map the regions with the appropriate permissions.
     boot_map_region(pml4, (void *)prog_hdr->p_va,
-        prog_hdr->p_memsz, prog_hdr->p_pa, prog_hdr->p_flags);
+        ROUNDUP(prog_hdr->p_memsz, PAGE_SIZE), prog_hdr->p_pa, flags);
   }
-
-  //print_pml4(pml4);
-
 }
 

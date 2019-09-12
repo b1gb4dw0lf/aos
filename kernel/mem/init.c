@@ -42,14 +42,13 @@ int pml4_setup(struct boot_info *boot_info)
 	    (physaddr_t) bootstack,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
+
   /* Map in the pages from the buddy allocator as RW-. */
   boot_map_region(kernel_pml4,
       (void *)KPAGES,
       npages * sizeof(struct page_info),
           PADDR(pages),
           PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
-
-  dump_page_tables(kernel_pml4, PAGE_MASK);
 
 
   /* Migrate the struct page_info structs to the newly mapped area using
@@ -130,12 +129,11 @@ void mem_init(struct boot_info *boot_info)
 	lab2_check_pml4();
 
 	/* Load the kernel PML4. */
-	cprintf("PA: %p\n", PADDR(kernel_pml4));
-	load_pml4((void *) PADDR(kernel_pml4));
-  panic("at the disco");
+	load_pml4((struct page_table *) PADDR(kernel_pml4));
 
 	/* Check the paging functions. */
 	lab2_check_paging();
+  panic("at the disco");
 
 	/* Add the rest of the physical memory to the buddy allocator. */
 	page_init_ext(boot_info);
