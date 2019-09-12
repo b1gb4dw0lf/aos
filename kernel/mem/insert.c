@@ -20,10 +20,9 @@ static int insert_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	struct insert_info *info = walker->udata;
 	struct page_info *page = pa2page(*entry);
 
-	/* LAB 2: your code here. */
+	assert(page_aligned(page2pa(info->page)));
 
 	// If entry exists
-	cprintf("entry : %p\n", entry);
 	if (*entry & PAGE_PRESENT) {
 	    // Decrement ref count of the page
 	    page_decref(page);
@@ -34,7 +33,7 @@ static int insert_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
     // Increase the ref count of new page
     info->page->pp_ref += 1;
     // Set the flags?
-    physaddr_t newAddr = page2pa(info->page) | info->flags;
+    physaddr_t newAddr = page2pa(info->page) | info->flags | PAGE_PRESENT;
     // Set the entry to new page
     *entry = newAddr;
 
@@ -54,10 +53,7 @@ static int insert_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	struct insert_info *info = walker->udata;
 	struct page_info *page;
 
-    /* LAB 2: your code here. */
-
     // If PDE is present and a huge page
-	cprintf("entry : %p\n", entry);
 	if ((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE)) {
         page = pa2page(*entry);
         // Decrement the ref count
@@ -67,15 +63,17 @@ static int insert_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	}
 
 	if (info->page->pp_order == BUDDY_4K_PAGE) {
-	    // If new page is 4K alloc new table
-	    ptbl_alloc(entry, base, end, walker);
-	    //insert_pte(entry, base, end, walker);
+    assert(page_aligned(page2pa(info->page)));
+    // If new page is 4K alloc new table
+    ptbl_alloc(entry, base, end, walker);
+    //insert_pte(entry, base, end, walker);
 	} else if (info->page->pp_order == BUDDY_2M_PAGE) {
-	    // If new page is 2M increase the ref count
-	    info->page->pp_ref += 1;
-	    // Set the entry to new page with flags?
-	    physaddr_t newAddr = page2pa(info->page) | info->flags;
-	    *entry = newAddr;
+    assert(hpage_aligned(page2pa(info->page)));
+    // If new page is 2M increase the ref count
+    info->page->pp_ref += 1;
+    // Set the entry to new page with flags?
+    physaddr_t newAddr = page2pa(info->page) | info->flags | PAGE_PRESENT;
+    *entry = newAddr;
 	}
 
 	return 0;
@@ -124,10 +122,11 @@ int page_insert(struct page_table *pml4, struct page_info *page, void *va,
 	info.pml4 = pml4;
 	info.flags = flags;
 
-	// TODO: Check if page is aligned?
-	//assert(hpage_aligned(page2pa(page)));
+	size_t isH_A = (hpage_aligned(page2pa(page)) & flags) && (PAGE_HUGE & flags);
+	size_t isP_A =  (page_aligned(page2pa(page)) & flags) && !(PAGE_HUGE & flags);
 
-	cprintf("page insert called\n");
+	assert(isH_A || isP_A);
+
 	return walk_page_range(pml4, va, (void *)((uintptr_t)va + PAGE_SIZE),
 		&walker);
 }
