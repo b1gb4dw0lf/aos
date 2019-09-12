@@ -25,8 +25,6 @@ static int remove_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 		page_decref(page);
 	}
 
-
-	/* LAB 2: your code here. */
 	return 0;
 }
 
@@ -44,7 +42,7 @@ static int remove_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	  cprintf("Shouldn't be here\n");
 		page = pa2page(*entry);
     assert(page->pp_ref == 1);
-    *entry ^= PAGE_PRESENT;
+    *entry = (physaddr_t) 0x0;
     page_decref(page);
 		tlb_invalidate(info->pml4, page2kva(page));
 	}
@@ -63,6 +61,9 @@ void unmap_page_range(struct page_table *pml4, void *va, size_t size)
 	struct page_walker walker = {
 		.get_pte = remove_pte,
 		.get_pde = remove_pde,
+		.unmap_pde = ptbl_free,
+		.unmap_pdpte = ptbl_free,
+		.unmap_pml4e = ptbl_free,
 		.udata = &info,
 	};
 

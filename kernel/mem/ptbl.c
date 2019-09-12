@@ -80,6 +80,20 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
 int ptbl_free(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
-	/* LAB 2: your code here. */
+
+  if (*entry & PAGE_PRESENT) {
+    struct page_info * page = pa2page(*entry);
+    struct page_table * table = (struct page_table *) page2kva(page);
+
+    // If there is a entry return without freeing the table
+    for (int i = 0; i < 512; ++i) {
+      if (table->entries[i]) return 0;
+    }
+    // If the loop is passed there is no entry in the table free the page
+    assert(page->pp_ref == 1);
+    page_decref(page);
+    *entry = 0x0;
+  }
+
 	return 0;
 }
