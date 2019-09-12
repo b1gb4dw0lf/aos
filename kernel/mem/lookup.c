@@ -60,13 +60,12 @@ struct page_info *page_lookup(struct page_table *pml4, void *va,
 		.udata = &info,
 	};
 
-	if (walk_page_range(pml4, va, (void *)((uintptr_t)va + PAGE_SIZE),
-		&walker) < 0)
-		return NULL;
+	if (walk_page_range(pml4, va, (void *)((uintptr_t)va + PAGE_SIZE), &walker) < 0) return NULL;
+
 	if(entry_store) {
 		*entry_store = info.entry;
 	}
 
-	return pa2page(*info.entry);
+	return info.entry ? pa2page(*info.entry) : NULL;
 }
 
