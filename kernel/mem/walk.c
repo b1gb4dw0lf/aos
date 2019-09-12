@@ -85,14 +85,14 @@ static int pdir_walk_range(struct page_table *pdir, uintptr_t base,
     entry = &pdir->entries[PAGE_DIR_INDEX(addr)];
     entry = KADDR((physaddr_t) entry);
 
-    if (walker->get_pde) walker->get_pde(entry, addr, next, walker);
+    if (walker->get_pde) walker->get_pde(entry, addr, end, walker);
     if (!*entry && walker->pte_hole) walker->pte_hole(addr, next, walker);
 
     if ((*entry & PAGE_PRESENT) && !(*entry & PAGE_HUGE)) {
       struct page_table * ptbl = (struct page_table *) ROUNDDOWN(*entry, PAGE_SIZE);
       ptbl_walk_range(ptbl, addr, next < end ? next : end, walker);
 
-      if (walker->unmap_pde) walker->unmap_pde(entry, addr, next, walker);
+      if (walker->unmap_pde) walker->unmap_pde(entry, addr, end, walker);
     }
   }
 
