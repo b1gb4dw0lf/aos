@@ -75,6 +75,44 @@ void boot_map_region(struct page_table *pml4, void *va, size_t size,
 	walk_page_range(pml4, va, (void *)((uintptr_t)va + size), &walker);
 }
 
+void print_pml4(struct page_table * pml4) {
+  for (int i = 0; i < 512; ++i) {
+    cprintf("PML4E %d - %p %c%c%c%c\n", i, pml4->entries[i],
+            (pml4->entries[i] & PAGE_PRESENT) ? 'r' : '-',
+            (pml4->entries[i] & PAGE_WRITE) ? 'w' : '-',
+            (pml4->entries[i] & PAGE_NO_EXEC) ? '-' : 'x',
+            (pml4->entries[i] & PAGE_USER) ? 'u' : '-'
+    );
+    struct page_table * pdpt = (struct page_table *) ROUNDDOWN(pml4->entries[i], PAGE_SIZE);
+    for (int j = 0; pml4->entries[i] && j < 512; ++j) {
+      cprintf("\tPDPT %d - %p %c%c%c%c\n", j, pdpt->entries[j],
+              (pdpt->entries[j] & PAGE_PRESENT) ? 'r' : '-',
+              (pdpt->entries[j] & PAGE_WRITE) ? 'w' : '-',
+              (pdpt->entries[j] & PAGE_NO_EXEC) ? '-' : 'x',
+              (pdpt->entries[j] & PAGE_USER) ? 'u' : '-'
+      );
+      struct page_table * pdir = (struct page_table *) ROUNDDOWN(pdpt->entries[j], PAGE_SIZE);
+      for (int k = 0; pdpt->entries[j] && k < 512; ++k) {
+        cprintf("\t\tPDIR %d - %p %c%c%c%c\n", k, pdir->entries[k],
+                (pdir->entries[k] & PAGE_PRESENT) ? 'r' : '-',
+                (pdir->entries[k] & PAGE_WRITE) ? 'w' : '-',
+                (pdir->entries[k] & PAGE_NO_EXEC) ? '-' : 'x',
+                (pdir->entries[k] & PAGE_USER) ? 'u' : '-'
+        );
+        struct page_table * ptbl = (struct page_table *) ROUNDDOWN(pdir->entries[k], PAGE_SIZE);
+        for (int l = 0; pdir->entries[k] && l < 512; ++l) {
+          cprintf("\t\t\tPTE %d - %p %c%c%c%c\n", l, ptbl->entries[l],
+                  (ptbl->entries[l] & PAGE_PRESENT) ? 'r' : '-',
+                  (ptbl->entries[l] & PAGE_WRITE) ? 'w' : '-',
+                  (ptbl->entries[l] & PAGE_NO_EXEC) ? '-' : 'x',
+                  (ptbl->entries[l] & PAGE_USER) ? 'u' : '-'
+          );
+        }
+      }
+    }
+  }
+}
+
 /* This function parses the program headers of the ELF header of the kernel
  * to map the regions into the page table with the appropriate permissions.
  *
@@ -92,18 +130,31 @@ void boot_map_kernel(struct page_table *pml4, struct elf *elf_hdr)
 	struct elf_proghdr *prog_hdr =
 	    (struct elf_proghdr *)((char *)elf_hdr + elf_hdr->e_phoff);
 
+	// Map first 8mb to virtual addressesz
 	boot_map_region(pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
   // Iterates the program headers
-  struct elf_proghdr * eph = prog_hdr + elf_hdr->e_phnum;
-  for (; prog_hdr < eph; prog_hdr++) {
+  size_t a = elf_hdr->e_phnum;
+
+  for (size_t i = 0; i < a; i++, prog_hdr++) {
     // Ignores program headers below KERNEL_VMA
     if (prog_hdr->p_va < KERNEL_VMA) continue;
 
+    cprintf("%p %p %p [%c%c%c%c]\"\n",
+        prog_hdr->p_pa, (void *)prog_hdr->p_va, PADDR((void *)KERNEL_VMA),
+            (prog_hdr->p_flags & PAGE_PRESENT) ? 'r' : '-',
+            (prog_hdr->p_flags & PAGE_WRITE) ? 'w' : '-',
+            (prog_hdr->p_flags & PAGE_NO_EXEC) ? '-' : 'x',
+            (prog_hdr->p_flags & PAGE_USER) ? 'u' : '-'
+    );
+
     // map the regions with the appropriate permissions.
-    boot_map_region(pml4, (void *)prog_hdr->p_va, prog_hdr->p_memsz,
-        prog_hdr->p_pa, prog_hdr->p_flags);
+    boot_map_region(pml4, (void *)prog_hdr->p_va,
+        prog_hdr->p_memsz, prog_hdr->p_pa, prog_hdr->p_flags);
   }
+
+  //print_pml4(pml4);
+
 }
 
