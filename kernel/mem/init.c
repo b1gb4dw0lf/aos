@@ -30,17 +30,33 @@ int pml4_setup(struct boot_info *boot_info)
 	/* Map in the regions used by the kernel from the ELF header passed to
 	 * us through the boot info struct.
 	 */
+	boot_map_kernel(kernel_pml4, boot_info->elf_hdr);
 
 	/* Use the physical memory that 'bootstack' refers to as the kernel
 	 * stack. The kernel stack grows down from virtual address KSTACK_TOP.
 	 * Map 'bootstack' to [KSTACK_TOP - KSTACK_SIZE, KSTACK_TOP).
 	 */
+	boot_map_region(kernel_pml4,
+	    (void *)(KSTACK_TOP - KSTACK_SIZE),
+	    KSTACK_SIZE,
+	    (physaddr_t) bootstack,
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
-	/* Map in the pages from the buddy allocator as RW-. */
+  /* Map in the pages from the buddy allocator as RW-. */
+  boot_map_region(kernel_pml4,
+      (void *)KPAGES,
+      npages * sizeof(struct page_info),
+          PADDR(pages),
+          PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
-	/* Migrate the struct page_info structs to the newly mapped area using
-	 * buddy_migrate().
-	 */
+  dump_page_tables(kernel_pml4, PAGE_MASK);
+
+
+  /* Migrate the struct page_info structs to the newly mapped area using
+   * buddy_migrate().
+   */
+
+  buddy_migrate();
 
 	return 0;
 }
@@ -108,12 +124,15 @@ void mem_init(struct boot_info *boot_info)
 	pml4_setup(boot_info);
 
 	/* Enable the NX-bit. */
+	write_msr(MSR_EFER, MSR_EFER_NXE);
 
 	/* Check the kernel PML4. */
 	lab2_check_pml4();
-	panic("at the disco");
 
 	/* Load the kernel PML4. */
+	cprintf("PA: %p\n", PADDR(kernel_pml4));
+	load_pml4((void *) PADDR(kernel_pml4));
+  panic("at the disco");
 
 	/* Check the paging functions. */
 	lab2_check_paging();
