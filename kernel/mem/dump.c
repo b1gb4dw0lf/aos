@@ -15,8 +15,7 @@ struct dump_info {
 static int dump_hole(uintptr_t base, uintptr_t end, struct page_walker *walker)
 {
 	struct dump_info *info = walker->udata;
-
-	if (info->flags & PAGE_PRESENT) {
+	if (info->flags) {
 		cprintf("  %016p - %016p [%c%c%c%c",
 			info->base,
 			info->end,
@@ -51,8 +50,10 @@ static int dump_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
 	flags = *entry & info->mask;
 
+
 	if (flags == info->flags) {
-		info->end = end;
+
+    info->end = end;
 
 		return 0;
 	}
