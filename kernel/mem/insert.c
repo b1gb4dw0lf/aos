@@ -118,14 +118,12 @@ int page_insert(struct page_table *pml4, struct page_info *page, void *va,
 		.udata = &info,
 	};
 
+	if (page->pp_order == 9 && !hpage_aligned((uintptr_t)va)) return -1;
+	if (page->pp_order == 0 && !page_aligned((uintptr_t)va)) return -1;
+
 	info.page = page;
 	info.pml4 = pml4;
 	info.flags = flags;
-
-	size_t isH_A = (hpage_aligned(page2pa(page)) & flags) && (PAGE_HUGE & flags);
-	size_t isP_A =  (page_aligned(page2pa(page)) & flags) && !(PAGE_HUGE & flags);
-
-	assert(isH_A || isP_A);
 
 	return walk_page_range(pml4, va, (void *)((uintptr_t)va + PAGE_SIZE),
 		&walker);
