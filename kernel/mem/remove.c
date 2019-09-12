@@ -14,7 +14,19 @@ static int remove_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct remove_info *info = walker->udata;
-	struct page_info *page;
+	struct page_info *page = pa2page(*entry);
+
+	//If page is present
+	if(*entry & PAGE_PRESENT) {
+		//decrement reference count
+		page_decref(page);
+		//FIXME do we assume ref count is now 0 ? 
+		if(page->pp_ref > 0) {
+			panic("ref count non-zero after dec\n");
+		}
+		tlb_invalidate(info->pml4, page2kva(page));
+	}
+
 
 	/* LAB 2: your code here. */
 	return 0;
@@ -28,6 +40,14 @@ static int remove_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct remove_info *info = walker->udata;
 	struct page_info *page;
+
+	//check for huge pages and presence
+	if((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE)) {
+		page = pa2page(*entry);
+		page_decref(page);
+		assert(page->pp_ref == 0);
+		tlb_invalidate(info->pml4, page2kva(page));
+	}
 
 	/* LAB 2: your code here. */
 	return 0;
