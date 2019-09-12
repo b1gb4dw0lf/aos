@@ -15,8 +15,7 @@ struct dump_info {
 static int dump_hole(uintptr_t base, uintptr_t end, struct page_walker *walker)
 {
 	struct dump_info *info = walker->udata;
-
-	if (info->flags & PAGE_PRESENT) {
+	if (info->flags) {
 		cprintf("  %016p - %016p [%c%c%c%c",
 			info->base,
 			info->end,
@@ -51,8 +50,10 @@ static int dump_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
 	flags = *entry & info->mask;
 
+
 	if (flags == info->flags) {
-		info->end = end;
+
+    info->end = end;
 
 		return 0;
 	}
@@ -121,4 +122,28 @@ int dump_page_tables(struct page_table *pml4, uint64_t mask)
 
 	return 0;
 }
+
+int dump_page_tables_range(struct page_table *pml4, void * base, void * end, uint64_t mask)
+{
+  struct dump_info info = {
+      .base = 0,
+      .flags = 0,
+      .mask = mask | PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC |
+              PAGE_USER,
+  };
+  struct page_walker walker = {
+      .get_pte = dump_pte,
+      .get_pde = dump_pde,
+      .pte_hole = dump_hole,
+      .udata = &info,
+  };
+
+  if (walk_page_range(pml4, base, end, &walker) < 0)
+    return -1;
+
+  dump_hole(0, 0, &walker);
+
+  return 0;
+}
+
 

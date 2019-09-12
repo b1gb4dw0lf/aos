@@ -1,0 +1,12 @@
+.idea
+cmake-*
+obj
+x86_64-elf-7.3.0-Linux-x86_64
+cmake-build-debug
+CMakeLists.txt
+vu-aos-2019.*
+.settings
+.gdbrc
+.settings
+gradelib.pyc
+jos.out

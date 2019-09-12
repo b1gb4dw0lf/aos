@@ -38,7 +38,23 @@ void *boot_alloc(uint32_t n)
 	 *
 	 * LAB 1: your code here.
 	 */
-	return NULL;
+
+  // Return next free page if n == 0
+  // Copy original next_free
+  result = next_free;
+
+  // Allocate continuous physical memory
+  if (n > -0) {
+    // Update next free aligned with page size
+    next_free = next_free + ROUNDUP(n, PAGE_SIZE);
+  }
+
+  if(PADDR(next_free) > BOOT_MAP_LIM) { //FIXME 8MB limit (8mb?) (8MiB?)
+    cprintf("next_free : %u, lim : %u\n", (uintptr_t)next_free, (char *)BOOT_MAP_LIM);
+    panic("Boot_alloc : Out of memory");
+  }
+
+  return result;
 }
 
 /* The addresses and lengths in the memory map provided by the boot loader may

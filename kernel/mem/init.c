@@ -30,17 +30,33 @@ int pml4_setup(struct boot_info *boot_info)
 	/* Map in the regions used by the kernel from the ELF header passed to
 	 * us through the boot info struct.
 	 */
+	boot_map_kernel(kernel_pml4, boot_info->elf_hdr);
 
 	/* Use the physical memory that 'bootstack' refers to as the kernel
 	 * stack. The kernel stack grows down from virtual address KSTACK_TOP.
 	 * Map 'bootstack' to [KSTACK_TOP - KSTACK_SIZE, KSTACK_TOP).
 	 */
+	boot_map_region(kernel_pml4,
+	    (void *)(KSTACK_TOP - KSTACK_SIZE),
+	    KSTACK_SIZE,
+	    (physaddr_t) bootstack,
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
-	/* Map in the pages from the buddy allocator as RW-. */
+  /* Map in the pages from the buddy allocator as RW-. */
+  boot_map_region(kernel_pml4,
+      (void *)KPAGES,
+      npages * sizeof(struct page_info),
+          PADDR(pages),
+          PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
-	/* Migrate the struct page_info structs to the newly mapped area using
-	 * buddy_migrate().
-	 */
+  dump_page_tables(kernel_pml4, PAGE_MASK);
+
+
+  /* Migrate the struct page_info structs to the newly mapped area using
+   * buddy_migrate().
+   */
+
+  buddy_migrate();
 
 	return 0;
 }
@@ -86,9 +102,6 @@ void mem_init(struct boot_info *boot_info)
 	 */
 	npages = MIN(BOOT_MAP_LIM, highest_addr) / PAGE_SIZE;
 
-	/* Remove this line when you're ready to test this function. */
-	panic("mem_init: This function is not finished\n");
-
 	/*
 	 * Allocate an array of npages 'struct page_info's and store it in 'pages'.
 	 * The kernel uses this array to keep track of physical pages: for each
@@ -111,11 +124,15 @@ void mem_init(struct boot_info *boot_info)
 	pml4_setup(boot_info);
 
 	/* Enable the NX-bit. */
+	write_msr(MSR_EFER, MSR_EFER_NXE);
 
 	/* Check the kernel PML4. */
 	lab2_check_pml4();
 
 	/* Load the kernel PML4. */
+	cprintf("PA: %p\n", PADDR(kernel_pml4));
+	load_pml4((void *) PADDR(kernel_pml4));
+  panic("at the disco");
 
 	/* Check the paging functions. */
 	lab2_check_paging();
@@ -146,9 +163,19 @@ void page_init(struct boot_info *boot_info)
 	 *  3) mark the page as in use by setting pp_free to zero.
 	 *  4) set the order pp_order to zero.
 	 */
-	for (i = 0; i < npages; ++i) {
-		/* LAB 1: your code here. */
-	}
+  for (i = 0; i < npages; ++i) {
+    /* LAB 1: your code here. */
+    page = &pages[i];
+
+    // call list_init() to initialize the linked list node.
+    list_init(&page->pp_node);
+    // set the reference count pp_ref to zero.
+    page->pp_ref = 0;
+    // mark the page as in use by setting pp_free to zero.
+    page->pp_free = 0;
+    // set the order pp_order to zero.
+    page->pp_order = 0;
+  }
 
 	entry = (struct mmap_entry *)KADDR(boot_info->mmap_addr);
 	end = PADDR(boot_alloc(0));
@@ -165,9 +192,42 @@ void page_init(struct boot_info *boot_info)
 	 *  - boot_info->elf_hdr points to the ELF header.
 	 *  - Any address in [KERNEL_LMA, end) is part of the kernel.
 	 */
-	for (i = 0; i < boot_info->mmap_len; ++i, ++entry) {
-		/* LAB 1: your code here. */
-	}
+  for (i = 0; i < boot_info->mmap_len; ++i, ++entry) {
+    /* LAB 1: your code here. */
+
+    // Ignore the entry if the region is not free memory.
+    if (entry->type != MMAP_FREE) {
+      continue;
+    }
+
+    // Iterate through the pages in the region.
+    size_t j;
+    size_t start = entry->addr / PAGE_SIZE;
+    size_t fin = (entry->addr + entry->len) / PAGE_SIZE;
+
+    for (j = start; j < fin; ++j) {
+      page = &pages[j];
+      physaddr_t physaddr = page2pa(page);
+
+      // Hand the page to the buddy allocator by calling page_free()
+      // If the physical address is not above BOOT_MAP_LIM or reserved.
+      if (physaddr >= (uintptr_t)(BOOT_MAP_LIM)) {
+        continue;
+      } else if (physaddr == 0) {
+        continue;
+      } else if (physaddr == (uintptr_t)boot_info->elf_hdr) {
+        continue;//RESERVED (IVT/BIOS , ELF HEADER)
+      } else if (physaddr >= KERNEL_LMA && physaddr < end) {
+        continue;//RESERVED (KERNEL DATA)
+      } else if (physaddr == PAGE_ADDR(PADDR(boot_info))) {
+        continue;
+      } else if (entry->type != MMAP_FREE) {
+        continue;
+      } else {
+        page_free(page);
+      }
+    }
+  }
 }
 
 /* Extend the buddy allocator by initializing the page structure and memory
