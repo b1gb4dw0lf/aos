@@ -49,8 +49,7 @@ void *boot_alloc(uint32_t n)
     next_free = next_free + ROUNDUP(n, PAGE_SIZE);
   }
 
-  extern char end[];
-  if(next_free > (BOOT_MAP_LIM + end)) { //FIXME 8MB limit (8mb?) (8MiB?)
+  if(PADDR(next_free) > BOOT_MAP_LIM) { //FIXME 8MB limit (8mb?) (8MiB?)
     cprintf("next_free : %u, lim : %u\n", (uintptr_t)next_free, (char *)BOOT_MAP_LIM);
     panic("Boot_alloc : Out of memory");
   }
