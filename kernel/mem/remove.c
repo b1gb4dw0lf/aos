@@ -18,7 +18,6 @@ static int remove_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
 	//If page is present
 	if(*entry & PAGE_PRESENT) {
-	  cprintf("Removing %p\n", *entry);
 		//decrement reference count
     assert(page->pp_ref == 1);
     *entry = (physaddr_t) 0x0;
@@ -39,7 +38,6 @@ static int remove_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
 	//check for huge pages and presence
 	if((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE)) {
-	  cprintf("Shouldn't be here\n");
 		page = pa2page(*entry);
     assert(page->pp_ref == 1);
     *entry = (physaddr_t) 0x0;
