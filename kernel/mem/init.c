@@ -249,6 +249,19 @@ void page_init_ext(struct boot_info *boot_info)
 	 */
 	for (i = 0; i < boot_info->mmap_len; ++i, ++entry) {
 		/* LAB 2: your code here. */
+		if(entry->type != MMAP_FREE) {
+			continue;
+		}
+
+		size_t j, start = entry->addr / PAGE_SIZE;
+		for(j = start ; j < end ; ++j) {
+			//TODO ANTONI THEORY TIME
+			//We need to assign both memory in page structs here most likely
+			//TODO QUESTION : DO WE CALL BOOT_ALLOC ? 
+			//We can allocate in the same fashion as in lab1, we calculate how many pages fit in the region
+			//npages = entry->eddr = end / PAGE_SIZE
+			//boot_alloc(npages * sizeof *pages) 
+		}
 	}
 }
 
