@@ -18,7 +18,9 @@ static int boot_map_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct boot_map_info *info = walker->udata;
 
-	/* LAB 2: your code here. */
+	*entry = info->pa | info->flags;
+	info->pa += PAGE_SIZE;
+
 	return 0;
 }
 
@@ -33,7 +35,15 @@ static int boot_map_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct boot_map_info *info = walker->udata;
 
-	/* LAB 2: your code here. */
+	cprintf("PDE: %p Huge: %d\n", *entry, info->pa&PAGE_HUGE);
+
+	if (!(info->pa & PAGE_HUGE)) {
+	  cprintf("Alloccing %p\n", info->pa);
+	  ptbl_alloc(entry, base, end, walker);
+	} else {
+    panic("WHAT THE HEL\n");
+	}
+
 	return 0;
 }
 
@@ -60,6 +70,8 @@ void boot_map_region(struct page_table *pml4, void *va, size_t size,
 	struct page_walker walker = {
 		.get_pte = boot_map_pte,
 		.get_pde = boot_map_pde,
+		.get_pdpte = ptbl_alloc,
+		.get_pml4e = ptbl_alloc,
 		.udata = &info,
 	};
 
@@ -85,6 +97,18 @@ void boot_map_kernel(struct page_table *pml4, struct elf *elf_hdr)
 	uint64_t flags;
 	size_t i;
 
-	/* LAB 2: your code here. */
+	boot_map_region(pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+
+  // Iterates the program headers
+  struct elf_proghdr * eph = prog_hdr + elf_hdr->e_phnum;
+  for (; prog_hdr < eph; prog_hdr++) {
+    // Ignores program headers below KERNEL_VMA
+    if (prog_hdr->p_va < KERNEL_VMA) continue;
+
+    // map the regions with the appropriate permissions.
+    boot_map_region(pml4, (void *)prog_hdr->p_va, prog_hdr->p_memsz,
+        prog_hdr->p_pa, prog_hdr->p_flags);
+  }
 }
 
