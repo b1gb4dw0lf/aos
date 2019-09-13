@@ -234,14 +234,15 @@ void page_init(struct boot_info *boot_info)
  */
 void page_init_ext(struct boot_info *boot_info)
 {
-	struct page_info *page, *lookup ,*lookup2;
+	struct page_info *page, *res;
 	struct mmap_entry *entry;
 	uintptr_t pa, end;
 	size_t i;
+	size_t index;
+	size_t nblocks = (1 << (12 + BUDDY_MAX_ORDER - 1)) / PAGE_SIZE;//stolen from buddy_map_chunk
 
 	entry = (struct mmap_entry *)KADDR(boot_info->mmap_addr);
 	end = PADDR(boot_alloc(0));
-	cprintf("page_init_ext \n");
 
 	/* Go through the entries in the memory map:
 	 *  1) Ignore the entry if the region is not free memory.
@@ -250,68 +251,39 @@ void page_init_ext(struct boot_info *boot_info)
 	 *  4) Hand the page to the buddy allocator by calling page_free().
 	 */
 	for (i = 0; i < boot_info->mmap_len; ++i, ++entry) {
-		/* LAB 2: your code here. */
 		if(entry->type != MMAP_FREE) {
 			continue;
 		}
-		if(entry->addr + entry->len < BOOT_MAP_LIM) {
-			continue;
-		}
 
-		size_t j, start = entry->addr / PAGE_SIZE;
-		size_t fin = (entry->addr + entry->len) / PAGE_SIZE;
-		if(start < npages) start = npages +1;
+		pa = entry->addr;
 
-		buddy_map_chunk(kernel_pml4, fin);
-
-		cprintf("%d - %d\n", start, fin);
-		cprintf("map region : %p => %p\n", KPAGES + (BOOT_MAP_LIM / PAGE_SIZE), (fin -start) * sizeof(*page));
-		// memory are for the pages themselves
-		boot_map_region(kernel_pml4,
-				(void *)KPAGES + (start * sizeof(*page)) ,
-				(fin - start) * sizeof(*page),
-				(physaddr_t) end,
-				(PAGE_PRESENT | PAGE_WRITE));
-	
-		// memory area that the pages would map to.
-		boot_map_region(kernel_pml4,
-				(void *)KERNEL_VMA + BOOT_MAP_LIM, 
-				(fin - start) * PAGE_SIZE,
-				0x0 + BOOT_MAP_LIM,
-				(PAGE_PRESENT | PAGE_WRITE ));
-		cprintf("map region : %p => %p\n", KERNEL_VMA + BOOT_MAP_LIM, entry->len - BOOT_MAP_LIM);
-
-
-		dump_page_tables(kernel_pml4, PAGE_HUGE);
-		for(j = start ; j < 2400 ; j++) {
-			cprintf("page %d\n", j);
-			page = &pages[j];
-			lookup = page_lookup(kernel_pml4, (void *)page, NULL) ;
-			cprintf("doing lookup\n");
-			
-			if(lookup == NULL) {
-				cprintf(" %p null\n", lookup);
+		for(pa = entry->addr; pa < (entry->addr + entry->len) ; pa += PAGE_SIZE) {
+			index = PAGE_INDEX(pa);
+			if(pa < BOOT_MAP_LIM) {
+				continue;
 			}
-			//cprintf("lookup %p\n", lookup);
-//			list_init(&page->pp_node);
-			// set the reference count pp_ref to zero.
-			page->pp_ref = 0;
-			// mark the page as in use by setting pp_free to zero.
-			page->pp_free = 0;
-			// set the order pp_order to zero.
-			page->pp_order = 0;
-
-			page_free(page);
+			page = &pages[index];
+			if(index % nblocks == 0) { //align with buddy_map_chunk functionality
+				buddy_map_chunk(kernel_pml4, index);
+			}
+			res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
+			if(res == NULL) {
+				boot_map_region(kernel_pml4,
+						page2kva(page),
+						PAGE_SIZE,
+						pa,
+						(PAGE_PRESENT | PAGE_WRITE ));
+				//res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
+				page_free(page);
+			}
 		}
-		dump_page_tables(kernel_pml4, PAGE_HUGE);
-		//TODO boot map_pages
-		//TODO buddy_map_chunk
-			//TODO ANTONI THEORY TIME
-			//We need to assign both memory in page structs here most likely
-			//TODO QUESTION : DO WE CALL BOOT_ALLOC ? 
-			//We can allocate in the same fashion as in lab1, we calculate how many pages fit in the region
-			//npages = entry->eddr = end / PAGE_SIZE
-			//boot_alloc(npages * sizeof *pages) 
+/*		boot_map_region(kernel_pml4,
+				(void *)KERNEL_VMA + BOOT_MAP_LIM,
+				entry->len - BOOT_MAP_LIM,
+				BOOT_MAP_LIM,
+				(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));*/
+		/* LAB 2: your code here. */
 	}
+	cprintf("passed!\n");	
 }
 
