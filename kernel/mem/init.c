@@ -262,33 +262,38 @@ void page_init_ext(struct boot_info *boot_info)
 		size_t fin = (entry->addr + entry->len) / PAGE_SIZE;
 		if(start < npages) start = npages +1;
 
-		buddy_map_chunk(kernel_pml4, fin - start + npages);
+		buddy_map_chunk(kernel_pml4, fin);
 
+		cprintf("%d - %d\n", start, fin);
+		cprintf("map region : %p => %p\n", KPAGES + (BOOT_MAP_LIM / PAGE_SIZE), (fin -start) * sizeof(*page));
+		// memory are for the pages themselves
 		boot_map_region(kernel_pml4,
-				(void *)KPAGES + (start  * sizeof(*page)),
-				((fin - start) * sizeof(*page)),
+				(void *)KPAGES + (start * sizeof(*page)) ,
+				(fin - start) * sizeof(*page),
 				(physaddr_t) end,
 				(PAGE_PRESENT | PAGE_WRITE));
 	
-
+		// memory area that the pages would map to.
 		boot_map_region(kernel_pml4,
 				(void *)KERNEL_VMA + BOOT_MAP_LIM, 
-				entry->len - BOOT_MAP_LIM,
-				0x0 + (physaddr_t)BOOT_MAP_LIM,
-				(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
+				(fin - start) * PAGE_SIZE,
+				0x0 + BOOT_MAP_LIM,
+				(PAGE_PRESENT | PAGE_WRITE ));
+		cprintf("map region : %p => %p\n", KERNEL_VMA + BOOT_MAP_LIM, entry->len - BOOT_MAP_LIM);
 
 
 		dump_page_tables(kernel_pml4, PAGE_HUGE);
-		for(j = start ; j < fin ; j++) {
+		for(j = start ; j < 2400 ; j++) {
+			cprintf("page %d\n", j);
 			page = &pages[j];
-			cprintf("doing page %p\n", page);
-			lookup = page_lookup(kernel_pml4, page, NULL) ;
+			lookup = page_lookup(kernel_pml4, (void *)page, NULL) ;
+			cprintf("doing lookup\n");
 			
 			if(lookup == NULL) {
-				cprintf(" %p null\n", page2kva(page));
+				cprintf(" %p null\n", lookup);
 			}
-			cprintf("lookup %p\n", lookup);
-			list_init(&page->pp_node);
+			//cprintf("lookup %p\n", lookup);
+//			list_init(&page->pp_node);
 			// set the reference count pp_ref to zero.
 			page->pp_ref = 0;
 			// mark the page as in use by setting pp_free to zero.
