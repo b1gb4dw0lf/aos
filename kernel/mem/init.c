@@ -282,12 +282,12 @@ void page_init_ext(struct boot_info *boot_info)
 			}
 //			res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
 //			if(res == NULL) {
-				boot_map_region(kernel_pml4,
+/*				boot_map_region(kernel_pml4,
 						page2kva(page),
 						PAGE_SIZE,
 						pa,
 						(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
-				//res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
+*/				//res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
 	//		}
 			page_free(page);
 		}
