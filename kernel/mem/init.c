@@ -134,7 +134,7 @@ void mem_init(struct boot_info *boot_info)
 
 	/* Check the paging functions. */
 	lab2_check_paging();
-	panic("at the disco");
+	//panic("at the disco");
 
 	/* Add the rest of the physical memory to the buddy allocator. */
 	page_init_ext(boot_info);
@@ -241,6 +241,7 @@ void page_init_ext(struct boot_info *boot_info)
 
 	entry = (struct mmap_entry *)KADDR(boot_info->mmap_addr);
 	end = PADDR(boot_alloc(0));
+	cprintf("page_init_ext \n");
 
 	/* Go through the entries in the memory map:
 	 *  1) Ignore the entry if the region is not free memory.
@@ -253,16 +254,25 @@ void page_init_ext(struct boot_info *boot_info)
 		if(entry->type != MMAP_FREE) {
 			continue;
 		}
+		if(entry->addr < BOOT_MAP_LIM) {
+			continue;
+		}
 
 		size_t j, start = entry->addr / PAGE_SIZE;
-		for(j = start ; j < end ; ++j) {
+		size_t fin = entry->addr + entry->len; 
+		boot_map_region(kernel_pml4,
+				(void *)KPAGES + entry->addr,
+				(fin - start),
+				(physaddr_t) entry->addr,
+				PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC );
+		//TODO boot map_pages
+		//TODO buddy_map_chunk
 			//TODO ANTONI THEORY TIME
 			//We need to assign both memory in page structs here most likely
 			//TODO QUESTION : DO WE CALL BOOT_ALLOC ? 
 			//We can allocate in the same fashion as in lab1, we calculate how many pages fit in the region
 			//npages = entry->eddr = end / PAGE_SIZE
 			//boot_alloc(npages * sizeof *pages) 
-		}
 	}
 }
 
