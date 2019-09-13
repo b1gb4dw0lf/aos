@@ -254,17 +254,25 @@ void page_init_ext(struct boot_info *boot_info)
 		if(entry->type != MMAP_FREE) {
 			continue;
 		}
-		if(entry->addr < BOOT_MAP_LIM) {
+		if(entry->addr + entry->len < BOOT_MAP_LIM) {
 			continue;
 		}
 
 		size_t j, start = entry->addr / PAGE_SIZE;
-		size_t fin = entry->addr + entry->len; 
+		size_t fin = (entry->addr + entry->len) / PAGE_SIZE;
+		if(start < npages) start = npages;
+
 		boot_map_region(kernel_pml4,
-				(void *)KPAGES + entry->addr,
-				(fin - start),
-				(physaddr_t) entry->addr,
+				(void *)KPAGES + (start  * sizeof(struct page_info)),
+				((fin - start) * sizeof(struct page_info)),
+				(physaddr_t) pages + (start * sizeof(struct page_info)),
 				PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC );
+		cprintf("here?\n");
+		buddy_map_chunk(kernel_pml4, (fin -start));
+		cprintf("here?\n");
+		for(j = start ; j < fin ; j++) {
+			page_free(&pages[j]);
+		}
 		//TODO boot map_pages
 		//TODO buddy_map_chunk
 			//TODO ANTONI THEORY TIME
