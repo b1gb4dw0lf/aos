@@ -67,8 +67,40 @@ int ptbl_split(physaddr_t *entry, uintptr_t base, uintptr_t end,
 int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
-	/* LAB 2: your code here. */
-	return 0;
+
+  if (!(*entry & PAGE_PRESENT) || (*entry & PAGE_HUGE)) return 0;
+
+  // Get the table if this is not a huge page
+  struct page_table * table = (struct page_table *) KADDR(ROUNDDOWN(*entry, PAGE_SIZE));
+  // Get the flags of first entry
+  uint64_t flags = table->entries[0] & ~ROUNDDOWN(table->entries[0], PAGE_SIZE);
+
+  // Check if all entries in the table are present and have same flags
+  for (int i = 0; i < 512; ++i) {
+    if (!(table->entries[i] & PAGE_PRESENT) || !(table->entries[i] & flags)) {
+      return 0;
+    }
+  }
+
+  // Allocate a huge page
+  struct page_info * new_page = page_alloc(ALLOC_HUGE);
+  // Increase the ref
+  new_page->pp_ref += 1;
+
+  struct page_info * old_page = pa2page(*entry);
+  memcpy(page2kva(new_page), page2kva(pa2page(table->entries[0])), HPAGE_SIZE);
+
+  for (int j = 0; j < 512; ++j) {
+    assert(pa2page(table->entries[j])->pp_ref == 1);
+    page_decref(pa2page(table->entries[j]));
+  }
+  assert(old_page->pp_ref == 1);
+  page_decref(old_page);
+
+  *entry = page2pa(new_page) | PAGE_PRESENT | PAGE_HUGE;
+  cprintf("PA: %p\n", *entry);
+
+  return 0;
 }
 
 /* Frees up the page table by checking if all entries are clear. Returns if no
