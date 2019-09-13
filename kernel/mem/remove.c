@@ -15,10 +15,12 @@ static int remove_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct remove_info *info = walker->udata;
 	struct page_info *page = pa2page(*entry);
+  cprintf("Remove n %p base %p\n", *entry, base);
 
 	//If page is present
 	if(*entry & PAGE_PRESENT) {
-		//decrement reference count
+
+    //decrement reference count
     assert(page->pp_ref == 1);
     *entry = (physaddr_t) 0x0;
 		page_decref(page);
@@ -34,18 +36,38 @@ static int remove_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct remove_info *info = walker->udata;
-	struct page_info *page;
+	struct page_info *page = pa2page(*entry);
+	uint64_t flags = 0 ,index = PAGE_TABLE_INDEX(base);
+
+	if (*entry & PAGE_PRESENT) flags |= PAGE_PRESENT;
+	if (*entry & PAGE_WRITE) flags |= PAGE_WRITE;
+	if (*entry & PAGE_NO_EXEC) flags |= PAGE_NO_EXEC;
+	if (*entry & PAGE_USER) flags |= PAGE_USER;
+
+	cprintf("Remove huge %p base %p end %p\n", *entry, base, end);
 
 	//check for huge pages and presence
-	if((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE)) {
-		page = pa2page(*entry);
+	if((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE) && index == 0) {
     assert(page->pp_ref == 1);
     *entry = (physaddr_t) 0x0;
     page_decref(page);
 		tlb_invalidate(info->pml4, page2kva(page));
+	} else if ((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE) && index > 0) {
+	  *entry = 0x0;
+	  // Create a table at current level
+	  ptbl_alloc(entry, base, end, walker);
+	  // Get the address of that table
+	  struct page_table * table = (struct page_table *) KADDR(ROUNDDOWN(*entry, PAGE_SIZE));
+
+	  // Transport pages that form a huge page to one level below
+    tlb_invalidate(info->pml4, page2kva(page));
+    for (int i = 0; i < 512; ++i, ++page) {
+      page->pp_order = 0;
+      if (i != 0) page->pp_ref += 1;
+      table->entries[i] = ROUNDDOWN(page2pa(page), PAGE_SIZE) | PAGE_PRESENT;
+    }
 	}
 
-	/* LAB 2: your code here. */
 	return 0;
 }
 
