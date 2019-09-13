@@ -98,7 +98,7 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
   page_decref(old_page);
 
   *entry = page2pa(new_page) | PAGE_PRESENT | PAGE_HUGE;
-  cprintf("PA: %p\n", *entry);
+ // cprintf("PA: %p\n", *entry);
 
   return 0;
 }

@@ -15,7 +15,7 @@ static int remove_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct remove_info *info = walker->udata;
 	struct page_info *page = pa2page(*entry);
-  cprintf("Remove n %p base %p\n", *entry, base);
+//  cprintf("Remove n %p base %p\n", *entry, base);
 
 	//If page is present
 	if(*entry & PAGE_PRESENT) {
@@ -44,7 +44,7 @@ static int remove_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	if (*entry & PAGE_NO_EXEC) flags |= PAGE_NO_EXEC;
 	if (*entry & PAGE_USER) flags |= PAGE_USER;
 
-	cprintf("Remove huge %p base %p end %p\n", *entry, base, end);
+	//cprintf("Remove huge %p base %p end %p\n", *entry, base, end);
 
 	//check for huge pages and presence
 	if((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE) && index == 0) {

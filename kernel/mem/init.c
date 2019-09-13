@@ -46,7 +46,7 @@ int pml4_setup(struct boot_info *boot_info)
   /* Map in the pages from the buddy allocator as RW-. */
   boot_map_region(kernel_pml4,
       (void *)KPAGES,
-      npages * sizeof(struct page_info),
+      npages * sizeof(*page),
           PADDR(pages),
           PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC );
 
@@ -238,7 +238,7 @@ void page_init_ext(struct boot_info *boot_info)
 	struct mmap_entry *entry;
 	uintptr_t pa, end;
 	size_t i;
-	size_t index;
+	size_t index; 
 	size_t nblocks = (1 << (12 + BUDDY_MAX_ORDER - 1)) / PAGE_SIZE;//stolen from buddy_map_chunk
 
 	entry = (struct mmap_entry *)KADDR(boot_info->mmap_addr);
@@ -254,36 +254,44 @@ void page_init_ext(struct boot_info *boot_info)
 		if(entry->type != MMAP_FREE) {
 			continue;
 		}
-
 		pa = entry->addr;
+		if(entry->addr < BOOT_MAP_LIM) {
+			boot_map_region(kernel_pml4,
+					(void *)KADDR(entry->addr) + BOOT_MAP_LIM,
+					entry->len - BOOT_MAP_LIM,
+					BOOT_MAP_LIM,
+					(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
+		} else {
+			boot_map_region(kernel_pml4,
+					(void *)KADDR(entry->addr),
+					entry->len,
+					pa,
+					(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
+		}
+
 
 		for(pa = entry->addr; pa < (entry->addr + entry->len) ; pa += PAGE_SIZE) {
-			index = PAGE_INDEX(pa);
 			if(pa < BOOT_MAP_LIM) {
 				continue;
 			}
+			index = PAGE_INDEX(pa);
 			page = &pages[index];
-			if(index % nblocks == 0) { //align with buddy_map_chunk functionality
+			if(index % nblocks ==0) { //align with buddy_map_chunk functionality
 				buddy_map_chunk(kernel_pml4, index);
+				//cprintf("group %d map chunk %d with r %d id %d\n", index / nblocks, index, r, index);
 			}
-			res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
-			if(res == NULL) {
+//			res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
+//			if(res == NULL) {
 				boot_map_region(kernel_pml4,
 						page2kva(page),
 						PAGE_SIZE,
 						pa,
-						(PAGE_PRESENT | PAGE_WRITE ));
+						(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
 				//res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
-				page_free(page);
-			}
+	//		}
+			page_free(page);
 		}
-/*		boot_map_region(kernel_pml4,
-				(void *)KERNEL_VMA + BOOT_MAP_LIM,
-				entry->len - BOOT_MAP_LIM,
-				BOOT_MAP_LIM,
-				(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));*/
-		/* LAB 2: your code here. */
+		// LAB 2: your code here. */
 	}
-	cprintf("passed!\n");	
 }
 
