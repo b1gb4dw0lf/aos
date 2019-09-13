@@ -255,21 +255,7 @@ void page_init_ext(struct boot_info *boot_info)
 			continue;
 		}
 		pa = entry->addr;
-		if(entry->addr < BOOT_MAP_LIM) {
-			boot_map_region(kernel_pml4,
-					(void *)KADDR(entry->addr) + BOOT_MAP_LIM,
-					entry->len - BOOT_MAP_LIM,
-					BOOT_MAP_LIM,
-					(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
-		} else {
-			boot_map_region(kernel_pml4,
-					(void *)KADDR(entry->addr),
-					entry->len,
-					pa,
-					(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
-		}
-
-
+	
 		for(pa = entry->addr; pa < (entry->addr + entry->len) ; pa += PAGE_SIZE) {
 			if(pa < BOOT_MAP_LIM) {
 				continue;
@@ -280,15 +266,6 @@ void page_init_ext(struct boot_info *boot_info)
 				buddy_map_chunk(kernel_pml4, index);
 				//cprintf("group %d map chunk %d with r %d id %d\n", index / nblocks, index, r, index);
 			}
-//			res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
-//			if(res == NULL) {
-/*				boot_map_region(kernel_pml4,
-						page2kva(page),
-						PAGE_SIZE,
-						pa,
-						(PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC));
-*/				//res = page_lookup(kernel_pml4, (void *)page2kva(page), NULL);
-	//		}
 			page_free(page);
 		}
 		// LAB 2: your code here. */
