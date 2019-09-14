@@ -254,21 +254,27 @@ void page_init_ext(struct boot_info *boot_info)
 		if(entry->type != MMAP_FREE) {
 			continue;
 		}
-		pa = entry->addr;
-	
+
+
 		for(pa = entry->addr; pa < (entry->addr + entry->len) ; pa += PAGE_SIZE) {
 			if(pa < BOOT_MAP_LIM) {
 				continue;
 			}
-			index = PAGE_INDEX(pa);
-			page = &pages[index];
-			if(index % nblocks ==0) { //align with buddy_map_chunk functionality
-				buddy_map_chunk(kernel_pml4, index);
-				//cprintf("group %d map chunk %d with r %d id %d\n", index / nblocks, index, r, index);
+
+      if (hpage_aligned(pa)) {
+        buddy_map_chunk(kernel_pml4, npages);
+        boot_map_region(kernel_pml4, (void *)(KPAGES + (npages * PAGE_SIZE)),
+                        HPAGE_SIZE, pa, PAGE_PRESENT | PAGE_WRITE);
+        for (size_t j = 0; j < 512; ++j) {
+          page_free(pa2page(pa + j * PAGE_SIZE));
+        }
+
+
+			  pa += HPAGE_SIZE - PAGE_SIZE;
+			} else {
+        panic("NOT HPAGE ALIGNED");
 			}
-			page_free(page);
 		}
-		// LAB 2: your code here. */
 	}
 }
 
