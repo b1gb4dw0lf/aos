@@ -31,13 +31,22 @@
  */
 int slab_alloc_chunk(struct slab *slab)
 {
-	struct page_info *page;
-	struct slab_info *info;
-	struct slab_obj *obj;
+	struct page_info *page = page_alloc(ALLOC_ZERO);
+	struct slab_info *info = (struct slab_info *)slab->info_off;
+	struct slab_obj *obj = page2kva(page);
 	char *base;
-	size_t i;
 
-	/* LAB 3: your code here. */
+	list_init(&info->free_list);
+	info->free_count = PAGE_SIZE / slab->obj_size;
+
+  for (size_t j = 0; j < info->free_count; ++j) {
+    list_insert_after(&info->free_list, &obj->node);
+    obj->info->slab = slab;
+    obj += slab->obj_size;
+  }
+
+  list_insert_after(&slab->partial, &info->node);
+
 	return 0;
 }
 
@@ -46,6 +55,9 @@ int slab_alloc_chunk(struct slab *slab)
  */
 void slab_free_chunk(struct slab *slab, struct slab_info *info)
 {
+  list_remove(&info->node);
+  struct page_info * page = page_lookup(kernel_pml4, slab, NULL);
+  page_free(page);
 	/* LAB 3: your code here. */
 }
 
