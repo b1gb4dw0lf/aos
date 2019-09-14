@@ -4,6 +4,8 @@
 
 #include <kernel/mem.h>
 
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
+
 /* Allocates a page table if none is present for the given entry.
  * If there is already something present in the PTE, then this function simply
  * returns. Otherwise, this function allocates a page using page_alloc(),
@@ -67,8 +69,49 @@ int ptbl_split(physaddr_t *entry, uintptr_t base, uintptr_t end,
 int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
-	/* LAB 2: your code here. */
-	return 0;
+
+  if (!(*entry & PAGE_PRESENT) || (*entry & PAGE_HUGE)) return 0;
+
+  // Get the table if this is not a huge page
+  struct page_table * table = (struct page_table *) KADDR(STRIP_ENTRY(*entry));
+  // Get the flags of first entry
+  uint64_t flags = table->entries[0] & ~ROUNDDOWN(table->entries[0], PAGE_SIZE);
+
+  // Check if all entries in the table are present and have same flags
+  for (int i = 0; i < 512; ++i) {
+    if (!table->entries[i] ||
+      (table->entries[i] & PAGE_PRESENT && pa2page(STRIP_ENTRY(table->entries[i]))->pp_ref == 0)
+      || (table->entries[i] & PAGE_PRESENT && pa2page(STRIP_ENTRY(table->entries[i]))->pp_ref > 1)
+      || !(table->entries[i] & PAGE_PRESENT)
+      || !(table->entries[i] & flags)) {
+      return 0;
+    }
+  }
+
+  // Allocate a huge page
+  struct page_info * new_page = page_alloc(ALLOC_HUGE);
+  // Increase the ref
+  new_page->pp_ref += 1;
+
+  physaddr_t old_entry = STRIP_ENTRY(*entry);
+  struct page_info * old_page = pa2page(old_entry);
+
+  memcpy(page2kva(new_page), page2kva(pa2page(STRIP_ENTRY(table->entries[0]))), HPAGE_SIZE);
+
+  physaddr_t entry_to_be_merged;
+  for (int j = 0; j < 512; ++j) {
+    entry_to_be_merged = STRIP_ENTRY(table->entries[j]);
+    assert(pa2page(entry_to_be_merged)->pp_ref == 1);
+    page_decref(pa2page(entry_to_be_merged));
+  }
+
+  assert(old_page->pp_ref == 1);
+  page_decref(old_page);
+
+  *entry = page2pa(new_page) | PAGE_PRESENT | PAGE_HUGE;
+ // cprintf("PA: %p\n", *entry);
+
+  return 0;
 }
 
 /* Frees up the page table by checking if all entries are clear. Returns if no
@@ -80,6 +123,20 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
 int ptbl_free(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
-	/* LAB 2: your code here. */
+
+  if (*entry & PAGE_PRESENT) {
+    struct page_info * page = pa2page(STRIP_ENTRY(*entry));
+    struct page_table * table = (struct page_table *) page2kva(page);
+
+    // If there is a entry return without freeing the table
+    for (int i = 0; i < 512; ++i) {
+      if (table->entries[i]) return 0;
+    }
+    // If the loop is passed there is no entry in the table free the page
+    assert(page->pp_ref == 1);
+    page_decref(page);
+    *entry = 0x0;
+  }
+
 	return 0;
 }

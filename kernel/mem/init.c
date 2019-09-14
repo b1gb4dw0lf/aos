@@ -46,7 +46,7 @@ int pml4_setup(struct boot_info *boot_info)
   /* Map in the pages from the buddy allocator as RW-. */
   boot_map_region(kernel_pml4,
       (void *)KPAGES,
-      npages * sizeof(struct page_info),
+      npages * sizeof(*page),
           PADDR(pages),
           PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC );
 
@@ -134,7 +134,6 @@ void mem_init(struct boot_info *boot_info)
 
 	/* Check the paging functions. */
 	lab2_check_paging();
-	panic("at the disco");
 
 	/* Add the rest of the physical memory to the buddy allocator. */
 	page_init_ext(boot_info);
@@ -234,10 +233,12 @@ void page_init(struct boot_info *boot_info)
  */
 void page_init_ext(struct boot_info *boot_info)
 {
-	struct page_info *page;
+	struct page_info *page, *res;
 	struct mmap_entry *entry;
 	uintptr_t pa, end;
 	size_t i;
+	size_t index; 
+	size_t nblocks = (1 << (12 + BUDDY_MAX_ORDER - 1)) / PAGE_SIZE;//stolen from buddy_map_chunk
 
 	entry = (struct mmap_entry *)KADDR(boot_info->mmap_addr);
 	end = PADDR(boot_alloc(0));
@@ -249,19 +250,28 @@ void page_init_ext(struct boot_info *boot_info)
 	 *  4) Hand the page to the buddy allocator by calling page_free().
 	 */
 	for (i = 0; i < boot_info->mmap_len; ++i, ++entry) {
-		/* LAB 2: your code here. */
 		if(entry->type != MMAP_FREE) {
 			continue;
 		}
 
-		size_t j, start = entry->addr / PAGE_SIZE;
-		for(j = start ; j < end ; ++j) {
-			//TODO ANTONI THEORY TIME
-			//We need to assign both memory in page structs here most likely
-			//TODO QUESTION : DO WE CALL BOOT_ALLOC ? 
-			//We can allocate in the same fashion as in lab1, we calculate how many pages fit in the region
-			//npages = entry->eddr = end / PAGE_SIZE
-			//boot_alloc(npages * sizeof *pages) 
+		for(pa = entry->addr; pa < (entry->addr + entry->len) ; pa += PAGE_SIZE) {
+			if(pa < BOOT_MAP_LIM) {
+				continue;
+			}
+
+      if (hpage_aligned(pa)) {
+        buddy_map_chunk(kernel_pml4, npages);
+        boot_map_region(kernel_pml4, (void *)(KPAGES + (npages * PAGE_SIZE)),
+                        HPAGE_SIZE, pa, PAGE_PRESENT | PAGE_WRITE);
+        for (size_t j = 0; j < 512; ++j) {
+          page_free(pa2page(pa + j * PAGE_SIZE));
+        }
+
+
+			  pa += HPAGE_SIZE - PAGE_SIZE;
+			} else {
+        panic("NOT HPAGE ALIGNED");
+			}
 		}
 	}
 }

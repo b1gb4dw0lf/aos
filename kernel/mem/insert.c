@@ -58,21 +58,21 @@ static int insert_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
         page = pa2page(*entry);
         // Decrement the ref count
         page_decref(page);
+        assert(page->pp_ref == 0);
         // Invalidate the tlb
         tlb_invalidate(info->pml4, page2kva(page));
 	}
 
 	if (info->page->pp_order == BUDDY_4K_PAGE) {
-    assert(page_aligned(page2pa(info->page)));
     // If new page is 4K alloc new table
     ptbl_alloc(entry, base, end, walker);
     //insert_pte(entry, base, end, walker);
 	} else if (info->page->pp_order == BUDDY_2M_PAGE) {
-    assert(hpage_aligned(page2pa(info->page)));
     // If new page is 2M increase the ref count
     info->page->pp_ref += 1;
+    assert(info->page->pp_ref == 1);
     // Set the entry to new page with flags?
-    physaddr_t newAddr = page2pa(info->page) | info->flags | PAGE_PRESENT;
+    physaddr_t newAddr = page2pa(info->page) | info->flags | PAGE_PRESENT | PAGE_HUGE;
     *entry = newAddr;
 	}
 
@@ -115,19 +115,20 @@ int page_insert(struct page_table *pml4, struct page_info *page, void *va,
 		.get_pde = insert_pde,
 		.get_pml4e = ptbl_alloc,
 		.get_pdpte = ptbl_alloc,
+		.unmap_pde = ptbl_merge,
 		.udata = &info,
 	};
+
+	if (page->pp_order == 9 && !hpage_aligned((uintptr_t)va)) return -1;
+	if (page->pp_order == 0 && !page_aligned((uintptr_t)va)) return -1;
 
 	info.page = page;
 	info.pml4 = pml4;
 	info.flags = flags;
 
-	size_t isH_A = (hpage_aligned(page2pa(page)) & flags) && (PAGE_HUGE & flags);
-	size_t isP_A =  (page_aligned(page2pa(page)) & flags) && !(PAGE_HUGE & flags);
+	size_t page_size = (1<<page->pp_order) * PAGE_SIZE;
 
-	assert(isH_A || isP_A);
-
-	return walk_page_range(pml4, va, (void *)((uintptr_t)va + PAGE_SIZE),
+	return walk_page_range(pml4, va, (void *)((uintptr_t)va + page_size),
 		&walker);
 }
 
