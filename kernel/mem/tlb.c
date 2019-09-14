@@ -15,5 +15,7 @@ void tlb_invalidate(struct page_table *pml4, void *va)
 	 * Note: for now, there is only one address space, so always invalidate.
 	 */
 	/* LAB 2: your code here. */
+
+	flush_page(va);
 }
 

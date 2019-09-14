@@ -268,13 +268,13 @@ void page_free(struct page_info *pp)
   // Make sure the page has no refs
   assert(pp->pp_ref == 0);
   // Make sure the page is not out of bounds
-  assert(PAGE_INDEX(page2pa(pp)) >= 0 && PAGE_INDEX(page2pa(pp)) <= npages);
+//  assert(PAGE_INDEX(page2pa(pp)) >= 0 && PAGE_INDEX(page2pa(pp)) <= npages);
 
 #ifdef BONUS_LAB1
   // Make sure the page won't be freed again
 	assert(!pp->pp_free);
 	// Make sure the page is aligned
-    assert(page2pa(pp) % PAGE_SIZE == 0);
+  assert(page2pa(pp) % PAGE_SIZE == 0);
 #endif
 
   list_init(&pp->pp_node);
