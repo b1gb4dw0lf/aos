@@ -61,7 +61,20 @@ void task_init(void)
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
 	 * to tasks.
 	 */
-	cprintf("Initializing Tasks\n");
+	cprintf("Task_init()\n");
+	struct page_info *page;
+	uintptr_t location = (uintptr_t)PIDMAP_BASE;
+	size_t totalpages = (pid_max * sizeof(uintptr_t)) / PAGE_SIZE;
+	size_t pointerc   = PAGE_SIZE / sizeof(uintptr_t);
+	pid_t pid = 0;
+	for (size_t pagec = 0; pagec < totalpages ; pagec++) {//loop on a per page basis (128 for pid_max)
+		page = page_alloc(ALLOC_ZERO);//alloc 4096 page
+		page_insert(kernel_pml4, page, (void *)PIDMAP_BASE + (pagec * PAGE_SIZE), (PAGE_PRESENT | PAGE_USER | PAGE_WRITE));//insert page at wanted addr
+		for(size_t pointer = 0 ; pointer < pointerc ; pointer++) {
+			tasks[pid] = 0x0;
+			pid++;
+		}
+	}
 	/* LAB 3: your code here. */
 }
 
@@ -87,6 +100,7 @@ static int task_setup_vas(struct task *task)
   boot_map_region(task->task_pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
                   PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
+	cprintf("pass\n");
 	/* LAB 3: your code here. */
 	return 0;
 }
