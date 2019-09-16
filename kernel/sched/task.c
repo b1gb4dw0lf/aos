@@ -197,6 +197,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	/* Now map one page for the program's initial stack at virtual address
 	 * USTACK_TOP - PAGE_SIZE.
 	 */
+	panic("task_load_elf() not implemented yet\n");
 
 	/* LAB 3: your code here. */
 }
@@ -210,6 +211,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
  */
 void task_create(uint8_t *binary, enum task_type type)
 {
+	panic("task_create not implemented yet\n");
 	/* LAB 3: your code here. */
 }
 
