@@ -38,8 +38,9 @@ int slab_alloc_chunk(struct slab *slab)
 	// Pointer to the head of new page
 	char *base = page2kva(page);
 
-	// Info resides at the bottom of the page
+  // Info resides at the bottom of the page
   info = (struct slab_info*)(base + slab->info_off);
+  info->slab = slab;
   // Initialize free list of new slab
   list_init(&info->free_list);
 
@@ -70,13 +71,9 @@ int slab_alloc_chunk(struct slab *slab)
 void slab_free_chunk(struct slab *slab, struct slab_info *info)
 {
 	/* LAB 3: your code here. */
-	cprintf("Freeing slab\n");
-	char * pageAddr = (char *) info - slab->info_off;
-	cprintf("Got page address: %p\n", pageAddr);
   list_remove(&info->node);
-  cprintf("Removed from list\n");
+	void * pageAddr = (void *) info - slab->info_off;
 	struct page_info * page = page_lookup(kernel_pml4, pageAddr, NULL);
-  cprintf("Got page %p %p\nFreeing page\n", page2pa(page), page2kva(page));
 	page_free(page);
 }
 
@@ -156,13 +153,9 @@ void slab_free(void *p)
 	struct slab_info *info = obj->info;
 	struct slab *slab = info->slab;
 
-	cprintf("Inside slab_free %p\n", p);
-
 	memset(p, 0, slab->obj_size - sizeof *obj);
-	cprintf("memset obj\n");
 
 	if (list_is_empty(&info->free_list)) {
-	  cprintf("List is empty\n");
 		list_remove(&info->node);
 		list_push(&slab->partial, &info->node);
 	}
@@ -170,13 +163,11 @@ void slab_free(void *p)
 	/* Add the object back to the free list of the slab and increment
 	 * the counter of free objects.
 	 */
-	cprintf("Add object back to free list\n");
 	list_push(&info->free_list, &obj->node);
 	++info->free_count;
 
 	/* Free the slab if all the objects are free. */
 	if (info->free_count >= slab->count) {
-	  cprintf("All objs are free\n");
 		slab_free_chunk(slab, info);
 	}
 }
