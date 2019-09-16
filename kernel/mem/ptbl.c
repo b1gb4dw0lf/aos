@@ -62,7 +62,7 @@ int ptbl_split(physaddr_t *entry, uintptr_t base, uintptr_t end,
     for(int i = 0 ; i < 512; ++i) {
       newpage = page_alloc(ALLOC_ZERO);
       newpage->pp_ref += 1;
-      ptbl->entries[i] = ROUNDDOWN(page2pa(page), PAGE_SIZE) | PAGE_PRESENT | PAGE_USER;
+      ptbl->entries[i] = ROUNDDOWN(page2pa(newpage), PAGE_SIZE) | PAGE_PRESENT | PAGE_USER;
     }
   }
 	return 0;
