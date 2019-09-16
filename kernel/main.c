@@ -5,6 +5,8 @@
 #include <boot.h>
 #include <stdio.h>
 #include <string.h>
+#include <kernel/sched.h>
+#include <kernel/tests.h>
 
 void kmain(struct boot_info *boot_info)
 {
