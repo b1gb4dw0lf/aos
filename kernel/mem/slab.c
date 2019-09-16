@@ -32,28 +32,34 @@
 int slab_alloc_chunk(struct slab *slab)
 {
 	struct page_info *page = page_alloc(ALLOC_ZERO);
-	struct slab_info *info = (struct slab_info *)(slab->info_off + (void *)slab); //at end of page
-	struct slab_obj *obj = page2kva(page);
-	char *base;
-	cprintf("slab at %p, info at %p, page at %p, kva at %p\n", slab, info, page, page2kva(page));
-	// calls used in slab_alloc after slab_Alloc_chunk
-	//  info = container_of(slab->partial.next, struct slab_info, node);
-  //  obj = container_of(info->free_list.next, struct slab_obj, node);
+	struct slab_info *info;
+	struct slab_obj *obj;
 
+	// Pointer to the head of new page
+	char *base = page2kva(page);
 
-	list_init(&info->free_list);
+	// Info resides at the bottom of the page
+  info = (struct slab_info*)(base + slab->info_off);
+  // Initialize free list of new slab
+  list_init(&info->free_list);
 
-	//ANTONI-c PAGE_SIZE / slab->obj_size or identical to slab_setup code?
-	info->free_count = (PAGE_SIZE - sizeof(struct slab_info)) / slab->obj_size;
+  // If the obj_size is 0 divide by 0 check
+  if (slab->obj_size == 0) return -1;
 
-  for (size_t j = 0; j < info->free_count; ++j) {
-		list_init(&obj->node);
-		list_push(&info->free_list, &obj->node);
-    obj->info = (void *)info;
-    obj += slab->obj_size;
+  // Decrement the size of info struct
+  info->free_count = (PAGE_SIZE - (PAGE_SIZE - slab->info_off)) / slab->obj_size;
+
+  // Initialize available objects
+  char * next = base;
+  for (size_t i = 0; i < info->free_count; ++i) {
+    obj = (struct slab_obj *) next;
+    list_insert_after(&info->free_list, &obj->node);
+    obj->info = info;
+    next += slab->obj_size;
   }
 
-  list_push(&slab->partial, &info->node);
+  // Insert slab into partial
+  list_insert_after(&slab->partial, &info->node);
 
 	return 0;
 }
@@ -63,13 +69,15 @@ int slab_alloc_chunk(struct slab *slab)
  */
 void slab_free_chunk(struct slab *slab, struct slab_info *info)
 {
-  list_remove(&info->node); // remove node from partial list
-	cprintf("slab at %p list tail at %p\n", slab, (void *)list_tail(&info->free_list));
-  struct page_info * page = page_lookup(kernel_pml4, (void *)list_tail(&info->free_list), NULL);
-	//first page should be 0xffffff8000004240
-	cprintf("page at %p\n", page);
-  page_free(page);
 	/* LAB 3: your code here. */
+	cprintf("Freeing slab\n");
+	char * pageAddr = (char *) info - slab->info_off;
+	cprintf("Got page address: %p\n", pageAddr);
+  list_remove(&info->node);
+  cprintf("Removed from list\n");
+	struct page_info * page = page_lookup(kernel_pml4, pageAddr, NULL);
+  cprintf("Got page %p %p\nFreeing page\n", page2pa(page), page2kva(page));
+	page_free(page);
 }
 
 /* Initializes a slab allocator for the given object size as follows:
@@ -119,7 +127,6 @@ void *slab_alloc(struct slab *slab)
 		return NULL;
 
 	info = container_of(slab->partial.next, struct slab_info, node);
-
 	obj = container_of(info->free_list.next, struct slab_obj, node);
 
 	list_remove(&obj->node);
@@ -149,9 +156,13 @@ void slab_free(void *p)
 	struct slab_info *info = obj->info;
 	struct slab *slab = info->slab;
 
+	cprintf("Inside slab_free %p\n", p);
+
 	memset(p, 0, slab->obj_size - sizeof *obj);
+	cprintf("memset obj\n");
 
 	if (list_is_empty(&info->free_list)) {
+	  cprintf("List is empty\n");
 		list_remove(&info->node);
 		list_push(&slab->partial, &info->node);
 	}
@@ -159,11 +170,13 @@ void slab_free(void *p)
 	/* Add the object back to the free list of the slab and increment
 	 * the counter of free objects.
 	 */
+	cprintf("Add object back to free list\n");
 	list_push(&info->free_list, &obj->node);
 	++info->free_count;
 
 	/* Free the slab if all the objects are free. */
 	if (info->free_count >= slab->count) {
+	  cprintf("All objs are free\n");
 		slab_free_chunk(slab, info);
 	}
 }
