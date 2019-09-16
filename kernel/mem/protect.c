@@ -43,7 +43,7 @@ static int protect_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct protect_info *info = walker->udata;
 	if ((end - base) < BUDDY_2M_PAGE) {
-		ptlb_split(entry, base, end, walker);
+		ptbl_split(entry, base, end, walker);
 	} else if(*entry & info->flags) {
 		return 0;
 	} else {
