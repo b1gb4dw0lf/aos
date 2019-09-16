@@ -61,6 +61,12 @@ void task_init(void)
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
 	 * to tasks.
 	 */
+	uintptr_t location = (uintptr_t)PIDMAP_BASE;
+	cprintf("map pid 0 to %d\n", pid_max);
+	for(pid_t pid = 1; pid < pid_max ; pid++) {
+		location = 0x0;
+		location += sizeof(struct task);
+	}
 	/* LAB 3: your code here. */
 }
 
