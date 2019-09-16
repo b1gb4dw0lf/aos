@@ -45,7 +45,6 @@ void *kmalloc(size_t size)
 		return NULL;
 	}
 
-	cprintf("kmalloc call\n");
 	return slab_alloc(slabs + index);
 }
 
