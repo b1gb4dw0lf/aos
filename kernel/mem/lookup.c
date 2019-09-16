@@ -3,6 +3,8 @@
 
 #include <kernel/mem.h>
 
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
+
 struct lookup_info {
 	physaddr_t *entry;
 };
@@ -69,6 +71,6 @@ struct page_info *page_lookup(struct page_table *pml4, void *va,
 	//return info.entry ? pa2page(*info.entry) : NULL;
 /*	if(info.entry != NULL) return pa2page(*info.entry);
 	else return NULL;*/
-	return info.entry ? pages + PAGE_INDEX(*info.entry) : NULL;
+	return info.entry ? pa2page(STRIP_ENTRY(*info.entry)) : NULL;
 }
 
