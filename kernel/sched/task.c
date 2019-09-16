@@ -61,17 +61,14 @@ void task_init(void)
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
 	 * to tasks.
 	 */
-	uintptr_t location = (uintptr_t)PIDMAP_BASE;
-	for(pid_t pid = 1; pid < pid_max ; pid++) {
-		location = 0x0;
-		location += sizeof(struct task);
-	}
+	cprintf("Initializing Tasks\n");
 	/* LAB 3: your code here. */
 }
 
 /* Sets up the virtual address space for the task. */
 static int task_setup_vas(struct task *task)
 {
+  cprintf("Setting up the VAS\n");
 	struct page_info *page;
 
 	/* Allocate a page for the page table. */
@@ -87,6 +84,9 @@ static int task_setup_vas(struct task *task)
 	 * Can you use kernel_pml4 as a template?
 	 */
 
+  boot_map_region(task->task_pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
+                  PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+
 	/* LAB 3: your code here. */
 	return 0;
 }
@@ -96,6 +96,7 @@ static int task_setup_vas(struct task *task)
  */
 struct task *task_alloc(pid_t ppid)
 {
+  cprintf("Allocating task\n");
 	struct task *task;
 	pid_t pid;
 
@@ -128,6 +129,8 @@ struct task *task_alloc(pid_t ppid)
 		kfree(task);
 		return NULL;
 	}
+
+	cprintf("Wudup?\n");
 
 	/* Set up the task. */
 	task->task_ppid = ppid;
@@ -193,10 +196,44 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 
 	/* LAB 3: your code here. */
 
+	cprintf("Loading ELF\n");
+
+	// Get elf file
+	struct elf * elf_file = (struct elf *) binary;
+
+  // Check if it is a valid elf file
+  if (elf_file->e_magic != ELF_MAGIC) panic("This is not a ELF file!");
+
+  // Get the program header
+	struct elf_proghdr *ph = (struct elf_proghdr*) (binary + elf_file->e_phoff);
+
+	// Get total amount of program headers
+	size_t p_headers = elf_file->e_phnum;
+  uint64_t flags = 0;
+
+  // Iterate through program segments and map and copy
+  for (size_t i = 0; i < p_headers; ++i) {
+    if (ph->p_type != ELF_PROG_LOAD) continue;
+
+    if (ph->p_flags & ELF_PROG_FLAG_READ) flags |= PAGE_PRESENT;
+    if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
+    if (!(ph->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
+
+    boot_map_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz,
+        ph->p_pa, flags | PAGE_USER);
+
+    // TODO: figure out this address space thing
+    memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+  }
+
 	/* Now map one page for the program's initial stack at virtual address
 	 * USTACK_TOP - PAGE_SIZE.
 	 */
 	panic("task_load_elf() not implemented yet\n");
+
+	struct page_info * page = page_alloc(ALLOC_ZERO);
+	boot_map_region(task->task_pml4, (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE,
+	    page2pa(page), PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
 
 	/* LAB 3: your code here. */
 }
@@ -210,7 +247,11 @@ static void task_load_elf(struct task *task, uint8_t *binary)
  */
 void task_create(uint8_t *binary, enum task_type type)
 {
-	panic("task_create not implemented yet\n");
+  cprintf("Creating a task\n");
+  struct task * task = task_alloc(0);
+  task_load_elf(task, binary);
+
+  if (task->task_type == TASK_TYPE_USER) nuser_tasks++;
 	/* LAB 3: your code here. */
 }
 
