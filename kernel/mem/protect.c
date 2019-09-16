@@ -17,6 +17,17 @@ static int protect_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct protect_info *info = walker->udata;
 
+	//ANTONI notes
+	//so the theory is that *entry has some flags which we gotta clear, and then we give it some new damn flags. 
+	//if the flags are equal we try to avoid invalidating
+	//END ANTONI notes
+	
+	if(*entry & info->flags) {
+		return 0;
+	} else {
+		*entry = ROUNDDOWN(*entry, PAGE_SIZE) | info->flags;// remove flags by rounding down to page size? 
+		tlb_invalidate(info->pml4, page2kva(pa2page(*entry)));
+	}
 	/* LAB 3: your code here. */
 	return 0;
 }
@@ -31,7 +42,14 @@ static int protect_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct protect_info *info = walker->udata;
-
+	if ((end - base) < BUDDY_2M_PAGE) {
+		ptlb_split(entry, base, end, walker);
+	} else if(*entry & info->flags) {
+		return 0;
+	} else {
+		*entry = ROUNDDOWN(*entry, PAGE_SIZE) | info->flags;// remove flags by rounding down to page size? 
+		tlb_invalidate(info->pml4, page2kva(pa2page(*entry)));
+	}
 	/* LAB 3: your code here. */
 	return 0;
 }
