@@ -96,11 +96,11 @@ static int task_setup_vas(struct task *task)
 	/* Now set task->task_pml4 and initialize the page table.
 	 * Can you use kernel_pml4 as a template?
 	 */
+	task->task_pml4 = page2kva(page);
 
   boot_map_region(task->task_pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
                   PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
-	cprintf("pass\n");
 	/* LAB 3: your code here. */
 	return 0;
 }
@@ -143,8 +143,6 @@ struct task *task_alloc(pid_t ppid)
 		kfree(task);
 		return NULL;
 	}
-
-	cprintf("Wudup?\n");
 
 	/* Set up the task. */
 	task->task_ppid = ppid;
