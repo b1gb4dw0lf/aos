@@ -61,19 +61,14 @@ void task_init(void)
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
 	 * to tasks.
 	 */
-	cprintf("Task_init()\n");
-	struct page_info *page;
-	uintptr_t location = (uintptr_t)PIDMAP_BASE;
-	size_t totalpages = (pid_max * sizeof(uintptr_t)) / PAGE_SIZE;
-	size_t pointerc   = PAGE_SIZE / sizeof(uintptr_t);
-	pid_t pid = 0;
-	for (size_t pagec = 0; pagec < totalpages ; pagec++) {//loop on a per page basis (128 for pid_max)
-		page = page_alloc(ALLOC_ZERO);//alloc 4096 page
-		page_insert(kernel_pml4, page, (void *)PIDMAP_BASE + (pagec * PAGE_SIZE), (PAGE_PRESENT | PAGE_USER | PAGE_WRITE));//insert page at wanted addr
-		for(size_t pointer = 0 ; pointer < pointerc ; pointer++) {
-			tasks[pid] = 0x0;
-			pid++;
-		}
+	cprintf("Initializing Tasks\n");
+
+	size_t total_pages = (pid_max * sizeof(struct task *)) / PAGE_SIZE;
+	for (size_t i = 0; i < total_pages; ++i) {
+    struct page_info * page = page_alloc(ALLOC_ZERO);
+    page_insert(kernel_pml4, page,
+        (void *)PIDMAP_BASE + (i * PAGE_SIZE),
+        PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 	}
 	/* LAB 3: your code here. */
 }
@@ -98,8 +93,10 @@ static int task_setup_vas(struct task *task)
 	 */
 	task->task_pml4 = page2kva(page);
 
+	task->task_pml4 = page2kva(page);
   boot_map_region(task->task_pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
                   PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+  cprintf("Getting out VAS\n");
 
 	/* LAB 3: your code here. */
 	return 0;
@@ -131,8 +128,9 @@ struct task *task_alloc(pid_t ppid)
 	 * task with that PID.
 	 */
 	for (pid = 1; pid < pid_max; ++pid) {
-		if (!tasks[pid]) {
-			tasks[pid] = task;
+    if (!tasks[pid]) {
+
+      tasks[pid] = task;
 			task->task_pid = pid;
 			break;
 		}
@@ -219,13 +217,15 @@ static void task_load_elf(struct task *task, uint8_t *binary)
   // Get the program header
 	struct elf_proghdr *ph = (struct elf_proghdr*) (binary + elf_file->e_phoff);
 
-	// Get total amount of program headers
+  // Get total amount of program headers
 	size_t p_headers = elf_file->e_phnum;
   uint64_t flags = 0;
 
   // Iterate through program segments and map and copy
   for (size_t i = 0; i < p_headers; ++i) {
     if (ph->p_type != ELF_PROG_LOAD) continue;
+
+    cprintf("PH - %d: va: %p pa: %p size: %p\n", i, ph->p_va, ph->p_pa, ph->p_memsz);
 
     if (ph->p_flags & ELF_PROG_FLAG_READ) flags |= PAGE_PRESENT;
     if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
@@ -235,13 +235,12 @@ static void task_load_elf(struct task *task, uint8_t *binary)
         ph->p_pa, flags | PAGE_USER);
 
     // TODO: figure out this address space thing
-    memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+    //memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
   }
 
 	/* Now map one page for the program's initial stack at virtual address
 	 * USTACK_TOP - PAGE_SIZE.
 	 */
-	panic("task_load_elf() not implemented yet\n");
 
 	struct page_info * page = page_alloc(ALLOC_ZERO);
 	boot_map_region(task->task_pml4, (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE,
