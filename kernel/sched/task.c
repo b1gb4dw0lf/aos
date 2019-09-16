@@ -221,6 +221,8 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	size_t p_headers = elf_file->e_phnum;
   uint64_t flags = 0;
 
+  task->task_frame.rip = elf_file->e_entry;
+
   // Iterate through program segments and map and copy
   for (size_t i = 0; i < p_headers; ++i) {
     if (ph->p_type != ELF_PROG_LOAD) continue;
@@ -351,6 +353,21 @@ void task_run(struct task *task)
 	 *  and make sure you have set the relevant parts of
 	 *  e->task_frame to sensible values.
 	 */
+
+	if (cur_task != NULL) {
+    if (cur_task->task_status == TASK_RUNNING) {
+      cur_task->task_status = TASK_RUNNABLE;
+    }
+  }
+
+  cur_task = task;
+  cur_task->task_status = TASK_RUNNING;
+  cur_task->task_runs++;
+  cprintf("Loading pml4\n");
+  load_pml4(task->task_pml4);
+  cprintf("Done\nPopping reg values\n");
+  task_pop_frame(&task->task_frame);
+  cprintf("Done\n");
 
 	/* LAB 3: Your code here. */
 	panic("task_run() not yet implemented");
