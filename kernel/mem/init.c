@@ -137,6 +137,7 @@ void mem_init(struct boot_info *boot_info)
 
 	/* Add the rest of the physical memory to the buddy allocator. */
 	page_init_ext(boot_info);
+	dump_page_tables(kernel_pml4, PAGE_HUGE);
 
 	/* Check the buddy allocator. */
 	lab2_check_buddy(boot_info);
@@ -262,7 +263,7 @@ void page_init_ext(struct boot_info *boot_info)
       if (hpage_aligned(pa)) {
         buddy_map_chunk(kernel_pml4, npages);
         boot_map_region(kernel_pml4, (void *)(KPAGES + (npages * PAGE_SIZE)),
-                        HPAGE_SIZE, pa, PAGE_PRESENT | PAGE_WRITE);
+                        HPAGE_SIZE, pa, PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
         for (size_t j = 0; j < 512; ++j) {
           page_free(pa2page(pa + j * PAGE_SIZE));
         }

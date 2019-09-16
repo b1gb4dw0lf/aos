@@ -243,8 +243,8 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	 */
 
 	struct page_info * page = page_alloc(ALLOC_ZERO);
-	boot_map_region(task->task_pml4, (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE,
-	    page2pa(page), PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+	page_insert(task->task_pml4, page, (void *) USTACK_TOP - PAGE_SIZE,
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
 	/* LAB 3: your code here. */
 }
