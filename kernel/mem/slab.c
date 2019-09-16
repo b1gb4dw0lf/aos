@@ -37,6 +37,7 @@ int slab_alloc_chunk(struct slab *slab)
 
 	// Pointer to the head of new page
 	char *base = page2kva(page);
+	page->pp_ref++;
 
   // Info resides at the bottom of the page
   info = (struct slab_info*)(base + slab->info_off);
@@ -74,6 +75,7 @@ void slab_free_chunk(struct slab *slab, struct slab_info *info)
   list_remove(&info->node);
 	void * pageAddr = (void *) info - slab->info_off;
 	struct page_info * page = page_lookup(kernel_pml4, pageAddr, NULL);
+	page->pp_ref--;
 	page_free(page);
 }
 
