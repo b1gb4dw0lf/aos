@@ -362,7 +362,7 @@ void task_run(struct task *task)
   cur_task->task_status = TASK_RUNNING;
   cur_task->task_runs++;
   cprintf("Loading pml4\n");
-  load_pml4(task->task_pml4);
+  load_pml4((struct page_table *) PADDR( task->task_pml4));
   cprintf("Done\nPopping reg values\n");
   task_pop_frame(&task->task_frame);
   cprintf("Done\n");
