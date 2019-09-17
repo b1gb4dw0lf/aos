@@ -91,7 +91,6 @@ static int task_setup_vas(struct task *task)
 	/* Now set task->task_pml4 and initialize the page table.
 	 * Can you use kernel_pml4 as a template?
 	 */
-	task->task_pml4 = page2kva(page);
 
 	task->task_pml4 = page2kva(page);
   boot_map_region(task->task_pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
@@ -223,18 +222,18 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 
   task->task_frame.rip = elf_file->e_entry;
 
+  struct elf_proghdr * eph = ph + elf_file->e_phnum;
   // Iterate through program segments and map and copy
-  for (size_t i = 0; i < p_headers; ++i) {
-    if (ph->p_type != ELF_PROG_LOAD) continue;
+  for (; ph < eph; ph++) {
+    if (ph->p_type != ELF_PROG_LOAD || ph->p_va == 0) continue;
 
-    cprintf("PH - %d: va: %p pa: %p size: %p\n", i, ph->p_va, ph->p_pa, ph->p_memsz);
+    cprintf("PH - %d: va: %p pa: %p size: %p\n", ph, ph->p_va, ph->p_pa, ph->p_memsz);
 
     if (ph->p_flags & ELF_PROG_FLAG_READ) flags |= PAGE_PRESENT;
     if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
     if (!(ph->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
 
-    boot_map_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz,
-        ph->p_pa, flags | PAGE_USER);
+    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz,flags | PAGE_USER);
 
     // TODO: figure out this address space thing
     //memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
@@ -243,7 +242,6 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	/* Now map one page for the program's initial stack at virtual address
 	 * USTACK_TOP - PAGE_SIZE.
 	 */
-
 	struct page_info * page = page_alloc(ALLOC_ZERO);
 	page_insert(task->task_pml4, page, (void *) USTACK_TOP - PAGE_SIZE,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
