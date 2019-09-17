@@ -209,6 +209,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	/* LAB 3: your code here. */
 
 	cprintf("Loading ELF\n");
+	load_pml4((void *)PADDR(task->task_pml4));
 
 	// Get elf file
 	struct elf * elf_file = (struct elf *) binary;
@@ -236,13 +237,10 @@ static void task_load_elf(struct task *task, uint8_t *binary)
     if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
     if (!(ph->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
 
-		boot_map_region(kernel_pml4, (void *)ph->p_va, ph->p_memsz, ph->p_pa, flags );
-		boot_map_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, ph->p_pa, flags | PAGE_USER);
-    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz,flags |PAGE_USER);
-
+    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, flags | PAGE_USER) ;
 
     // TODO: figure out this address space thing
-    memcpy((void *)ph->p_pa, binary + ph->p_offset, ph->p_filesz);
+    memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
   }
 
 	/* Now map one page for the program's initial stack at virtual address
@@ -252,6 +250,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	page_insert(task->task_pml4, page, (void *) USTACK_TOP - PAGE_SIZE,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
+	load_pml4((void *)PADDR(kernel_pml4));
 	/* LAB 3: your code here. */
 }
 
