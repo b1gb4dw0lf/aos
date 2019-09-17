@@ -25,8 +25,9 @@ static int populate_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 static int populate_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
-	struct page_info *page = pa2page(*entry);
+	struct page_info *page;
 	struct populate_info *info = walker->udata;
+
 	if(end - base >= BUDDY_2M_PAGE) {
 		page = page_alloc(ALLOC_HUGE & ALLOC_ZERO);
 		page->pp_ref += 1;
@@ -55,6 +56,8 @@ void populate_region(struct page_table *pml4, void *va, size_t size,
 	struct page_walker walker = {
 		.get_pte = populate_pte,
 		.get_pde = populate_pde,
+		.get_pdpte = ptbl_alloc,
+		.get_pml4e = ptbl_alloc,
 		.udata = &info,
 	};
 
