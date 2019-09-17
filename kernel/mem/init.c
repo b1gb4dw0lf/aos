@@ -126,7 +126,6 @@ void mem_init(struct boot_info *boot_info)
 	write_msr(MSR_EFER, MSR_EFER_NXE);
 
 	/* Check the kernel PML4. */
-	dump_page_tables(kernel_pml4, PAGE_HUGE);
 	lab2_check_pml4();
 
 	/* Load the kernel PML4. */

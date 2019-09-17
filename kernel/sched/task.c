@@ -56,6 +56,8 @@ struct task *pid2task(pid_t pid, int check_perm)
 	return task;
 }
 
+
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 void task_init(void)
 {
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
@@ -93,14 +95,28 @@ static int task_setup_vas(struct task *task)
 	 */
 
 	task->task_pml4 = page2kva(page);
-	physaddr_t * entry;
-	for(int i = 0 ; i < 512 ; i++) {
-		entry = &kernel_pml4->entries[i];
-		task->task_pml4->entries[i] = *entry;
-	}
-  cprintf("Getting out VAS\n");
 
-	/* LAB 3: your code here. */
+  for (int i = 0; i < 512; ++i) {
+    if (kernel_pml4->entries[i] & PAGE_PRESENT) {
+      ptbl_alloc(&task->task_pml4->entries[i], 0, 0, NULL);
+      struct page_table * pdpt = (struct page_table *) KADDR(STRIP_ENTRY(kernel_pml4->entries[i]));
+      struct page_table * task_pdpt = (struct page_table *) KADDR(STRIP_ENTRY(task->task_pml4->entries[i]));
+      for (int j = 0; j < 512; ++j) {
+        if (pdpt->entries[j] & PAGE_PRESENT && pdpt->entries[j] & PAGE_HUGE) {
+          task_pdpt->entries[j] = pdpt->entries[j];
+        } else if (pdpt->entries[j] & PAGE_PRESENT) {
+          ptbl_alloc(&task_pdpt->entries[j], 0, 0, NULL);
+          struct page_table * pdir = (struct page_table *) KADDR(STRIP_ENTRY(pdpt->entries[j]));
+          struct page_table * task_pdir = (struct page_table *) KADDR(STRIP_ENTRY(task_pdpt->entries[j]));
+
+          for (int k = 0; k < 512; ++k) {
+            task_pdir->entries[k] = pdir->entries[k];
+          }
+        }
+      }
+    }
+  }
+
 	return 0;
 }
 
@@ -226,6 +242,8 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 
   task->task_frame.rip = elf_file->e_entry;
 
+  load_pml4((void *) PADDR(task->task_pml4));
+
   struct elf_proghdr * eph = ph + elf_file->e_phnum;
   // Iterate through program segments and map and copy
   for (; ph < eph; ph++) {
@@ -251,6 +269,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
 	load_pml4((void *)PADDR(kernel_pml4));
+
 	/* LAB 3: your code here. */
 }
 
