@@ -255,10 +255,14 @@ static void task_load_elf(struct task *task, uint8_t *binary)
     if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
     if (!(ph->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
 
-    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, flags | PAGE_USER) ;
-
-    // TODO: figure out this address space thing
+		// populate region with WRITE permissions so we can memcpy + memset
+    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, PAGE_WRITE | PAGE_USER) ;
+		// set bytes in section to 0
+		memset((void *)ROUNDDOWN(ph->p_va, PAGE_SIZE), '\0', (ROUNDUP(ph->p_va, PAGE_SIZE) - ROUNDDOWN(ph->p_va, PAGE_SIZE)));
+		// copy over the relevant sections
     memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+		// set actualy region permissions
+		protect_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, flags | PAGE_USER);
   }
 
 	/* Now map one page for the program's initial stack at virtual address
@@ -269,7 +273,6 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
 	load_pml4((void *)PADDR(kernel_pml4));
-
 	/* LAB 3: your code here. */
 }
 
