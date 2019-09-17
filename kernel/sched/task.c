@@ -93,8 +93,11 @@ static int task_setup_vas(struct task *task)
 	 */
 
 	task->task_pml4 = page2kva(page);
-  boot_map_region(task->task_pml4, (void *) KERNEL_VMA, BOOT_MAP_LIM, 0x0,
-                  PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+	physaddr_t * entry;
+	for(int i = 0 ; i < 512 ; i++) {
+		entry = &kernel_pml4->entries[i];
+		task->task_pml4->entries[i] = *entry;
+	}
   cprintf("Getting out VAS\n");
 
 	/* LAB 3: your code here. */
@@ -233,10 +236,13 @@ static void task_load_elf(struct task *task, uint8_t *binary)
     if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
     if (!(ph->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
 
-    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz,flags | PAGE_USER);
+		boot_map_region(kernel_pml4, (void *)ph->p_va, ph->p_memsz, ph->p_pa, flags );
+		boot_map_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, ph->p_pa, flags | PAGE_USER);
+    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz,flags |PAGE_USER);
+
 
     // TODO: figure out this address space thing
-    //memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+    memcpy((void *)ph->p_pa, binary + ph->p_offset, ph->p_filesz);
   }
 
 	/* Now map one page for the program's initial stack at virtual address
@@ -362,7 +368,7 @@ void task_run(struct task *task)
   cur_task->task_status = TASK_RUNNING;
   cur_task->task_runs++;
   cprintf("Loading pml4\n");
-  load_pml4((struct page_table *) PADDR( task->task_pml4));
+  load_pml4((struct page_table *) PADDR(task->task_pml4));
   cprintf("Done\nPopping reg values\n");
   task_pop_frame(&task->task_frame);
   cprintf("Done\n");
