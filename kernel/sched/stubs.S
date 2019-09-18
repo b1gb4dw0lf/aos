@@ -39,9 +39,9 @@ isr_common_stub:
 	pushq %r13
 	pushq %r14
 	pushq %r15
-	/* push DS ; maybe mov %ax,%ds */
- 	mov %rax, %ds
+	mov %ds, %ax
 	pushq %rax
+	/* push DS ; maybe mov %ax,%ds */
 	/* Recover the segments. */
 	mov $GDT_KDATA, %rax
 	mov %ax, %ds
@@ -87,6 +87,7 @@ iret64:
 	pushq 0x90(%rbx) 
 	pushq 0x88(%rbx)
 	pushq 0x80(%rbx)
+	mov 0x0(%rbx), %ds
 	/* Return from the interrupt. */
 	addq $16, %rsp
 	iretq
