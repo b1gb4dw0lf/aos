@@ -24,9 +24,27 @@ isr\int_no:
 isr_common_stub:
 	/* LAB 3: your code here. */
 	/* Save the register state on the stack. */
-
+	pushf
+    pushq %r15
+    pushq %r14
+    pushq %r13
+    pushq %r12
+    pushq %r11
+    pushq %r10
+    pushq %r9
+    pushq %r8
+    pushq %rdi
+    pushq %rsi
+    pushq %rbp
+    pushq %rbx
+    pushq %rdx
+    pushq %rcx
+    pushq %rax
+    pushq %rsp
 	/* Recover the segments. */
-
+	mov $GDT_KDATA, %rax
+	mov %ax, %ds
+	mov %ax, %es
 	/* Jump to the generic interrupt handler. */
 	movq %rsp, %rdi
 	jmp int_handler
@@ -73,3 +91,27 @@ sysret64:
 	/* Return from the system call. */
 	sysretq
 
+// Define ISRs
+ISR_NOERRCODE 0
+ISR_NOERRCODE 1
+ISR_NOERRCODE 2
+ISR_NOERRCODE 3
+ISR_NOERRCODE 4
+ISR_NOERRCODE 5
+ISR_NOERRCODE 6
+ISR_NOERRCODE 7
+ISR_NOERRCODE 8
+ISR_NOERRCODE 9
+ISR_ERRCODE 10
+ISR_ERRCODE 11
+ISR_ERRCODE 12
+ISR_ERRCODE 13
+ISR_ERRCODE 14
+ISR_NOERRCODE 16
+ISR_ERRCODE 17
+ISR_NOERRCODE 18
+ISR_NOERRCODE 19
+ISR_NOERRCODE 20
+ISR_ERRCODE 21
+ISR_ERRCODE 30
+ISR_NOERRCODE 32
