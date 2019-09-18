@@ -272,6 +272,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	page_insert(task->task_pml4, page, (void *) USTACK_TOP - PAGE_SIZE,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
+
 	load_pml4((void *)PADDR(kernel_pml4));
 	/* LAB 3: your code here. */
 }
