@@ -39,7 +39,7 @@ isr_common_stub:
 	pushq %r13
 	pushq %r14
 	pushq %r15
-	mov %ds, %ax
+	mov %ds, %rax
 	pushq %rax
 	/* push DS ; maybe mov %ax,%ds */
 	/* Recover the segments. */
