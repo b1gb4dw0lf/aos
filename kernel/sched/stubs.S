@@ -50,9 +50,19 @@ syscall64:
 iret64:
 	/* LAB 3: your code here. */
 	/* Restore the register state. */
-
+	/* offset 0x8 * 1 + 8 + 7 + 2 then the first one*/
+	/* pushq SS at offset 0x90(RIP) + 8+8+8+8*/
+	/* pushq rsp at offset 0x90(RIP) + 8+8+8*/
+	/* pushq EFLAGS? at offset 0x90(RIP) + 8+8*/
+	/* pushq CS at offset 0x90(RIP) + 8*/
+	/* pushq RIP at offset 0x90(RIP)  */
+	pushq 0xb0(%rbx)
+	pushq 0xa8(%rbx)
+	pushq 0xa0(%rbx)
+	pushq 0x98(%rbx)
+	pushq 0x90(%rbx) 
 	/* Return from the interrupt. */
-	addq $16, %rsp
+	/*addq $16, %rsp*/
 	iretq
 
 .global sysret64
