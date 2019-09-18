@@ -131,29 +131,30 @@ void isr21();
 /* Set up the interrupt handlers. */
 void idt_init(void)
 {
-	set_idt_entry(&idtr.entries[INT_DIVIDE],				&isr0, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_DEBUG],					&isr1, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_NMI],						&isr2, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_BREAK],					&isr3, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_OVERFLOW],			&isr4, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_BOUND],					&isr5, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_INVALID_OP],		&isr6, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_DEVICE],				&isr7, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_DOUBLE_FAULT],	&isr8, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_TSS],						&isr10, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_NO_SEG_PRESENT],&isr11, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_SS],						&isr12, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_GPF],						&isr13, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_PAGE_FAULT],		&isr14, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_FPU],						&isr16, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_ALIGNMENT],			&isr17, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_MCE],						&isr18, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_SIMD],					&isr19, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[INT_SECURITY],			&isr30, IF_CS, 0x8E);
+	uint16_t flags = IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x0);
+	set_idt_entry(&idtr.entries[0],				isr0, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x0)), GDT_KCODE);
+/*	set_idt_entry(&idtr.entries[INT_DEBUG],					isr1, 0x0, 0);
+	set_idt_entry(&idtr.entries[INT_NMI],						isr2, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_BREAK],					isr3, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_OVERFLOW],			isr4, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_BOUND],					isr5, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_INVALID_OP],		isr6, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_DEVICE],				isr7, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_DOUBLE_FAULT],	isr8, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_TSS],						isr10, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_NO_SEG_PRESENT],isr11, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_SS],						isr12, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_GPF],						isr13, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_PAGE_FAULT],		isr14, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_FPU],						isr16, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_ALIGNMENT],			isr17, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_MCE],						isr18, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_SIMD],					isr19, 0, 0x8E);
+	set_idt_entry(&idtr.entries[INT_SECURITY],			isr30, 0, 0x8E);
 
-	set_idt_entry(&idtr.entries[9],				&isr9, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[20],			&isr20, IF_CS, 0x8E);
-	set_idt_entry(&idtr.entries[21],			&isr21, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[9],				&isr9, 0, 0x8E);
+	set_idt_entry(&idtr.entries[20],			&isr20, 0, 0x8E);
+	set_idt_entry(&idtr.entries[21],			&isr21, 0, 0x8E);*/
 	/* LAB 3: your code here. */
 	load_idt(&idtr);
 }
