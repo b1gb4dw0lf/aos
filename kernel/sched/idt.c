@@ -167,7 +167,13 @@ void int_dispatch(struct int_frame *frame)
 	 */
 	/* LAB 3: your code here. */
 	switch (frame->int_no) {
-	default: break;
+    case INT_PAGE_FAULT:
+      page_fault_handler(frame);
+      break;
+    case INT_SYSCALL:
+      cprintf("Syscall made\n");
+      break;
+  	default: break;
 	}
 
 	/* Unexpected trap: The user process or the kernel has a bug. */
