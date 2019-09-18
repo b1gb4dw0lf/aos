@@ -104,9 +104,46 @@ void print_int_frame(struct int_frame *frame)
 		frame->cs, frame->ds, frame->ss);
 }
 
+void isr0();
+void isr1();
+void isr2();
+void isr3();
+void isr4();
+void isr5();
+void isr6();
+void isr7();
+void isr8();
+void isr10();
+void isr11();
+void isr12();
+void isr13();
+void isr14();
+void isr16();
+void isr17();
+void isr18();
+void isr19();
+
 /* Set up the interrupt handlers. */
 void idt_init(void)
 {
+	set_idt_entry(&idtr.entries[INT_DIVIDE],				&isr0, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_DEBUG],					&isr1, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_NMI],						&isr2, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_BREAK],					&isr3, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_OVERFLOW],			&isr4, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_BOUND],					&isr5, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_INVALID_OP],		&isr6, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_DEVICE],				&isr7, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_DOUBLE_FAULT],	&isr8, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_TSS],						&isr10, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_NO_SEG_PRESENT],&isr11, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_SS],						&isr12, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_GPF],						&isr13, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_PAGE_FAULT],		&isr14, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_FPU],						&isr16, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_ALIGNMENT],			&isr17, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_MCE],						&isr18, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_SIMD],					&isr19, IF_CS, 0x8E);
 	/* LAB 3: your code here. */
 	load_idt(&idtr);
 }
