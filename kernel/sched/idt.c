@@ -103,7 +103,7 @@ void print_int_frame(struct int_frame *frame)
 		frame->rip, frame->rflags,
 		frame->cs, frame->ds, frame->ss);
 }
-
+/* named in idt.h */
 void isr0();
 void isr1();
 void isr2();
@@ -122,6 +122,11 @@ void isr16();
 void isr17();
 void isr18();
 void isr19();
+void isr30();
+/* not named in idt.h */
+void isr9();
+void isr20();
+void isr21();
 
 /* Set up the interrupt handlers. */
 void idt_init(void)
@@ -144,6 +149,11 @@ void idt_init(void)
 	set_idt_entry(&idtr.entries[INT_ALIGNMENT],			&isr17, IF_CS, 0x8E);
 	set_idt_entry(&idtr.entries[INT_MCE],						&isr18, IF_CS, 0x8E);
 	set_idt_entry(&idtr.entries[INT_SIMD],					&isr19, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[INT_SECURITY],			&isr30, IF_CS, 0x8E);
+
+	set_idt_entry(&idtr.entries[9],				&isr9, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[20],			&isr20, IF_CS, 0x8E);
+	set_idt_entry(&idtr.entries[21],			&isr21, IF_CS, 0x8E);
 	/* LAB 3: your code here. */
 	load_idt(&idtr);
 }
