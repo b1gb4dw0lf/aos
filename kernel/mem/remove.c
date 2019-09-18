@@ -2,6 +2,7 @@
 #include <paging.h>
 
 #include <kernel/mem.h>
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 
 struct remove_info {
 	struct page_table *pml4;
@@ -13,9 +14,9 @@ struct remove_info {
 static int remove_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
-	struct remove_info *info = walker->udata;
-	struct page_info *page = pa2page(*entry);
-//  cprintf("Remove n %p base %p\n", *entry, base);
+  struct remove_info *info = walker->udata;
+
+  struct page_info *page = pa2page((physaddr_t) STRIP_ENTRY(*entry));
 
 	//If page is present
 	if(*entry & PAGE_PRESENT) {
@@ -36,15 +37,15 @@ static int remove_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct remove_info *info = walker->udata;
-	struct page_info *page = pa2page(*entry);
-	uint64_t flags = 0 ,index = PAGE_TABLE_INDEX(base);
+	struct page_info *page = pa2page((physaddr_t) STRIP_ENTRY(*entry));
+
+  uint64_t flags = 0 ,index = PAGE_TABLE_INDEX(base);
 
 	if (*entry & PAGE_PRESENT) flags |= PAGE_PRESENT;
 	if (*entry & PAGE_WRITE) flags |= PAGE_WRITE;
 	if (*entry & PAGE_NO_EXEC) flags |= PAGE_NO_EXEC;
 	if (*entry & PAGE_USER) flags |= PAGE_USER;
 
-	//cprintf("Remove huge %p base %p end %p\n", *entry, base, end);
 
 	//check for huge pages and presence
 	if((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE) && index == 0) {
