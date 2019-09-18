@@ -74,13 +74,17 @@ iret64:
 	/* pushq EFLAGS? at offset 0x90(RIP) + 8+8*/
 	/* pushq CS at offset 0x90(RIP) + 8*/
 	/* pushq RIP at offset 0x90(RIP)  */
+	/* pushq int no */
+	/* pushq err code */
 	pushq 0xb0(%rbx)
 	pushq 0xa8(%rbx)
 	pushq 0xa0(%rbx)
 	pushq 0x98(%rbx)
 	pushq 0x90(%rbx) 
+	pushq 0x88(%rbx)
+	pushq 0x80(%rbx)
 	/* Return from the interrupt. */
-	/*addq $16, %rsp*/
+	addq $16, %rsp
 	iretq
 
 .global sysret64
