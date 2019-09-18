@@ -51,6 +51,7 @@ isr_common_stub:
 	/* push rsp as argument to the handler */
 	pushq %rsp
 	jmp int_handler
+	/* should probably recover the registers after this by popping it all */
 
 .global syscall64
 syscall64:
