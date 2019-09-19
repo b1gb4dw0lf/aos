@@ -134,7 +134,7 @@ void idt_init(void)
 	set_idt_entry(&idtr.entries[INT_DIVIDE],				isr0, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//FAULT
 	set_idt_entry(&idtr.entries[INT_DEBUG],					isr1, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//FAULT
 	set_idt_entry(&idtr.entries[INT_NMI],						isr2, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//NOT APPLICCABLE
-	set_idt_entry(&idtr.entries[INT_BREAK],					isr3, (IDT_PRESENT | IDT_TRAP_GATE32), GDT_KCODE);//TRAP
+	set_idt_entry(&idtr.entries[INT_BREAK],					isr3, (IDT_PRESENT | IDT_TRAP_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);//TRAP
 	set_idt_entry(&idtr.entries[INT_OVERFLOW],			isr4, (IDT_PRESENT | IDT_TRAP_GATE32), GDT_KCODE);//TRAP
 	set_idt_entry(&idtr.entries[INT_BOUND],					isr5, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//PAGE FAULT?
 	set_idt_entry(&idtr.entries[INT_INVALID_OP],		isr6, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//FAULT
