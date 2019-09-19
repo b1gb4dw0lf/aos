@@ -13,6 +13,7 @@ static int check_user_hole(uintptr_t base, uintptr_t end,
 	struct page_walker *walker)
 {
 	struct user_info *info = walker->udata;
+  cprintf("Should check hole!\n");
 
 	/* LAB 3: your code here. */
 	return 0;
@@ -22,6 +23,17 @@ static int check_user_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct user_info *info = walker->udata;
+  uint64_t flags = 0;
+
+  if (*entry & PAGE_PRESENT) flags |= PAGE_PRESENT;
+  if (*entry & PAGE_WRITE) flags |= PAGE_WRITE;
+  if (*entry & PAGE_USER) flags |= PAGE_USER;
+  if (*entry & PAGE_NO_EXEC) flags |= PAGE_NO_EXEC;
+
+  if (!(flags & info->flags)) {
+    info->va = (uintptr_t) entry;
+    return -1;
+  }
 
 	/* LAB 3: your code here. */
 	return 0;
@@ -31,6 +43,17 @@ static int check_user_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct user_info *info = walker->udata;
+  uint64_t flags = 0;
+
+  if (*entry & PAGE_PRESENT) flags |= PAGE_PRESENT;
+  if (*entry & PAGE_WRITE) flags |= PAGE_WRITE;
+  if (*entry & PAGE_USER) flags |= PAGE_USER;
+  if (*entry & PAGE_NO_EXEC) flags |= PAGE_NO_EXEC;
+
+  if (!(flags & info->flags)) {
+    info->va = (uintptr_t) entry;
+    return -1;
+  }
 
 	/* LAB 3: your code here. */
 	return 0;
@@ -69,10 +92,10 @@ void assert_user_mem(struct task *task, void *va, size_t size, int flags)
 {
 	uintptr_t fault_va;
 
-	if (check_user_mem(&fault_va, task->task_pml4, va, size,
-		flags | PAGE_USER) < 0) {
-		cprintf("[PID %5u] Access violation for va %p\n",
-			task->task_pid, fault_va);
+	if (va >= (void*) KERNEL_VMA || check_user_mem(&fault_va, task->task_pml4, va, size,flags | PAGE_USER) < 0) {
+		cprintf("Access violation detected\n");
+	  cprintf("[PID %5u] Access violation for va %p\n",
+			task->task_pid, va);
 		task_destroy(task);
 	}
 }
