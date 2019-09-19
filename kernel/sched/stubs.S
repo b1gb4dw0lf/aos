@@ -79,14 +79,41 @@ syscall64:
 	/* LAB 3: your code here. */
 	/* Store the userspace stack pointer in the per-cpu struct. */
 	/* assumption : ring 3 right now */
-    swapgs
+  swapgs
 	movq %rsp, %gs:CPU_TSS_RSP3
 	/* Load the kernel stack pointer from the per-cpu struct. */
-    movq %gs:CPU_TSS_RSP0, %rsp
-
+  movq %gs:CPU_TSS_RSP0, %rsp
+	/* load int frame location */
+	popq %r15
+	popq %r15
 	/* Store the register state into the per-cpu struct. */
-
-	swapgs
+	mov %ds, 0x0(%r15)
+/*	mov %r15, 0x8(%r15) we use this to store int frame */
+	movq %r14, 0x10(%r15)
+	movq %r13, 0x18(%r15)
+	movq %r12, 0x20(%r15)
+	movq %r11, 0x28(%r15)
+	movq %r10, 0x30(%r15)
+	movq %r9, 0x38(%r15)
+	movq %r8, 0x40(%r15)
+	movq %rdi, 0x48(%r15)
+	movq %rsi, 0x50(%r15)
+	movq %rbp, 0x58(%r15)
+	movq %rdx, 0x68(%r15)
+ 	movq %rcx, 0x70(%r15) /* is actually rip */
+	movq %rax, 0x78(%r15)
+	/* offset 0x8 * 1 + 8 + 7 + 2 then the first one*/
+	/* pushq SS at offset 0x90(RIP) + 8+8+8+8*/
+	mov %ss, 0xb0(%r15)
+	/* pushq rsp at offset 0x90(RIP) + 8+8+8*/
+	// no
+	/* pushq EFLAGS? at offset 0x90(RIP) + 8+8*/
+	// no
+	/* pushq CS at offset 0x90(RIP) + 8*/
+	mov %cs, 0x98(%r15)
+	/* pushq RIP at offset 0x90(RIP)  */
+	movq %rcx, 0x90(%r15)
+	movq %rbx, 0x78(%r15)
 	/* Jump to the system call handler. */
 	movq %r10, %rcx
 	pushq %rbp
@@ -138,7 +165,26 @@ iret64:
 sysret64:
 	/* LAB 3: your code here. */
 	/* Recover the register state. */
+	mov 0x0(%rbx), %ds
+	/* set other register */
+	mov 0x8(%rbx), %r15
+	mov 0x10(%rbx), %r14
+	mov 0x18(%rbx), %r13
+	mov 0x20(%rbx), %r12
+	mov 0x28(%rbx), %r11
+	mov 0x30(%rbx), %r10
+	mov 0x38(%rbx), %r9
+	mov 0x40(%rbx), %r8
+	mov 0x48(%rbx), %rdi
+	mov 0x50(%rbx), %rsi
+	mov 0x58(%rbx), %rbp
+	mov 0x68(%rbx), %rdx
+	mov 0x70(%rbx), %rcx
+	mov 0x60(%rbx), %rbx 
+	mov 0x98(%r15), %cs
 
+	movq %gs:CPU_TSS_RSP3, %rsp
+	swapgs
 	/* Return from the system call. */
 	sysretq
 
