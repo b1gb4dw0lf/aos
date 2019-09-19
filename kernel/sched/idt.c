@@ -158,7 +158,7 @@ void idt_init(void)
 	set_idt_entry(&idtr.entries[21],			isr21,(IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE); //No description, FAULT
 	/* LAB 3: your code here. */
 	/* syscall */
-	set_idt_entry(&idtr.entries[INT_SYSCALL],				isr3, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);//TRAP
+	set_idt_entry(&idtr.entries[INT_SYSCALL],				isr128, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);//TRAP
 	load_idt(&idtr);
 }
 

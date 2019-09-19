@@ -13,6 +13,7 @@ extern void syscall64(void);
 
 void syscall_init(void)
 {
+	write_msr(MSR_EFER, read_msr(MSR_EFER) | MSR_EFER_SCE);
 	/* LAB 3: your code here. */
 }
 
