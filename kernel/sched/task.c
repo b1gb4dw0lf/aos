@@ -56,17 +56,29 @@ struct task *pid2task(pid_t pid, int check_perm)
 	return task;
 }
 
+
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 void task_init(void)
 {
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
 	 * to tasks.
 	 */
+	cprintf("Initializing Tasks\n");
+
+	size_t total_pages = (pid_max * sizeof(struct task *)) / PAGE_SIZE;
+	for (size_t i = 0; i < total_pages; ++i) {
+    struct page_info * page = page_alloc(ALLOC_ZERO);
+    page_insert(kernel_pml4, page,
+        (void *)PIDMAP_BASE + (i * PAGE_SIZE),
+        PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+	}
 	/* LAB 3: your code here. */
 }
 
 /* Sets up the virtual address space for the task. */
 static int task_setup_vas(struct task *task)
 {
+  cprintf("Setting up the VAS\n");
 	struct page_info *page;
 
 	/* Allocate a page for the page table. */
@@ -82,7 +94,29 @@ static int task_setup_vas(struct task *task)
 	 * Can you use kernel_pml4 as a template?
 	 */
 
-	/* LAB 3: your code here. */
+	task->task_pml4 = page2kva(page);
+
+  for (int i = 0; i < 512; ++i) {
+    if (kernel_pml4->entries[i] & PAGE_PRESENT) {
+      ptbl_alloc(&task->task_pml4->entries[i], 0, 0, NULL);
+      struct page_table * pdpt = (struct page_table *) KADDR(STRIP_ENTRY(kernel_pml4->entries[i]));
+      struct page_table * task_pdpt = (struct page_table *) KADDR(STRIP_ENTRY(task->task_pml4->entries[i]));
+      for (int j = 0; j < 512; ++j) {
+        if (pdpt->entries[j] & PAGE_PRESENT && pdpt->entries[j] & PAGE_HUGE) {
+          task_pdpt->entries[j] = pdpt->entries[j];
+        } else if (pdpt->entries[j] & PAGE_PRESENT) {
+          ptbl_alloc(&task_pdpt->entries[j], 0, 0, NULL);
+          struct page_table * pdir = (struct page_table *) KADDR(STRIP_ENTRY(pdpt->entries[j]));
+          struct page_table * task_pdir = (struct page_table *) KADDR(STRIP_ENTRY(task_pdpt->entries[j]));
+
+          for (int k = 0; k < 512; ++k) {
+            task_pdir->entries[k] = pdir->entries[k];
+          }
+        }
+      }
+    }
+  }
+
 	return 0;
 }
 
@@ -91,6 +125,7 @@ static int task_setup_vas(struct task *task)
  */
 struct task *task_alloc(pid_t ppid)
 {
+  cprintf("Allocating task\n");
 	struct task *task;
 	pid_t pid;
 
@@ -111,8 +146,9 @@ struct task *task_alloc(pid_t ppid)
 	 * task with that PID.
 	 */
 	for (pid = 1; pid < pid_max; ++pid) {
-		if (!tasks[pid]) {
-			tasks[pid] = task;
+    if (!tasks[pid]) {
+
+      tasks[pid] = task;
 			task->task_pid = pid;
 			break;
 		}
@@ -188,10 +224,56 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 
 	/* LAB 3: your code here. */
 
+	cprintf("Loading ELF\n");
+	load_pml4((void *)PADDR(task->task_pml4));
+
+	// Get elf file
+	struct elf * elf_file = (struct elf *) binary;
+
+  // Check if it is a valid elf file
+  if (elf_file->e_magic != ELF_MAGIC) panic("This is not a ELF file!");
+
+  // Get the program header
+	struct elf_proghdr *ph = (struct elf_proghdr*) (binary + elf_file->e_phoff);
+
+  // Get total amount of program headers
+	size_t p_headers = elf_file->e_phnum;
+  uint64_t flags = 0;
+
+  task->task_frame.rip = elf_file->e_entry;
+
+  load_pml4((void *) PADDR(task->task_pml4));
+
+  struct elf_proghdr * eph = ph + elf_file->e_phnum;
+  // Iterate through program segments and map and copy
+  for (; ph < eph; ph++) {
+    if (ph->p_type != ELF_PROG_LOAD || ph->p_va == 0) continue;
+
+    cprintf("PH - %d: va: %p pa: %p size: %p\n", ph, ph->p_va, ph->p_pa, ph->p_memsz);
+
+    if (ph->p_flags & ELF_PROG_FLAG_READ) flags |= PAGE_PRESENT;
+    if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
+    if (!(ph->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
+
+		// populate region with WRITE permissions so we can memcpy + memset
+    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, PAGE_WRITE | PAGE_USER) ;
+		// set bytes in section to 0
+		memset((void *)ROUNDDOWN(ph->p_va, PAGE_SIZE), '\0', (ROUNDUP(ph->p_va, PAGE_SIZE) - ROUNDDOWN(ph->p_va, PAGE_SIZE)));
+		// copy over the relevant sections
+    memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+		// set actualy region permissions
+		protect_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, flags | PAGE_USER);
+  }
+
 	/* Now map one page for the program's initial stack at virtual address
 	 * USTACK_TOP - PAGE_SIZE.
 	 */
+	struct page_info * page = page_alloc(ALLOC_ZERO);
+	page_insert(task->task_pml4, page, (void *) USTACK_TOP - PAGE_SIZE,
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
+
+	load_pml4((void *)PADDR(kernel_pml4));
 	/* LAB 3: your code here. */
 }
 
@@ -204,6 +286,11 @@ static void task_load_elf(struct task *task, uint8_t *binary)
  */
 void task_create(uint8_t *binary, enum task_type type)
 {
+  cprintf("Creating a task\n");
+  struct task * task = task_alloc(0);
+  task_load_elf(task, binary);
+
+  if (task->task_type == TASK_TYPE_USER) nuser_tasks++;
 	/* LAB 3: your code here. */
 }
 
@@ -292,6 +379,18 @@ void task_run(struct task *task)
 	 *  and make sure you have set the relevant parts of
 	 *  e->task_frame to sensible values.
 	 */
+
+	if (cur_task != NULL) {
+    if (cur_task->task_status == TASK_RUNNING) {
+      cur_task->task_status = TASK_RUNNABLE;
+    }
+  }
+
+  cur_task = task;
+  cur_task->task_status = TASK_RUNNING;
+  cur_task->task_runs++;
+  load_pml4((struct page_table *) PADDR(task->task_pml4));
+  task_pop_frame(&task->task_frame);
 
 	/* LAB 3: Your code here. */
 	panic("task_run() not yet implemented");

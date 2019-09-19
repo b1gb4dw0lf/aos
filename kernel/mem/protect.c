@@ -3,6 +3,8 @@
 
 #include <kernel/mem.h>
 
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
+
 struct protect_info {
 	struct page_table *pml4;
 	uint64_t flags;
@@ -17,6 +19,18 @@ static int protect_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct protect_info *info = walker->udata;
 
+	//ANTONI notes
+	//so the theory is that *entry has some flags which we gotta clear, and then we give it some new damn flags. 
+	//if the flags are equal we try to avoid invalidating
+	//END ANTONI notes
+	struct page_info *page = pa2page(*entry);
+	
+	if((STRIP_ENTRY(*entry) | info->flags) == *entry) {
+		return 0;
+	} else {
+		*entry = STRIP_ENTRY(*entry) | info->flags;// remove flags by rounding down to page size? 
+		tlb_invalidate(info->pml4, page2kva(page));
+	}
 	/* LAB 3: your code here. */
 	return 0;
 }
@@ -31,7 +45,18 @@ static int protect_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct protect_info *info = walker->udata;
-
+	if(*entry & PAGE_HUGE) { 
+		if ((end - base) <= (( 1 << BUDDY_2M_PAGE) * PAGE_SIZE)) {
+			ptbl_split(entry, base, end, walker);
+		} else if((STRIP_ENTRY(*entry) | info->flags) == *entry) {
+			return 0;
+		} else {
+			*entry = STRIP_ENTRY(*entry) | info->flags;// remove flags by rounding down to page size? 
+			tlb_invalidate(info->pml4, page2kva(pa2page(*entry)));
+		}
+	} else {
+		return 0;
+	}
 	/* LAB 3: your code here. */
 	return 0;
 }

@@ -11,8 +11,18 @@
 
 extern void syscall64(void);
 
+void syscall64();
+
 void syscall_init(void)
 {
+  #ifdef LAB3_SYSCALL
+		write_msr(MSR_STAR,  ((uint64_t)GDT_UCODE)<<48  | ((uint64_t)GDT_KCODE)<<32);
+		write_msr(MSR_LSTAR,  (uint64_t)syscall64);
+		write_msr(MSR_SFMASK, FLAGS_TF | FLAGS_IF);//clearinterrupts
+    write_msr(MSR_KERNEL_GS_BASE, (uintptr_t) this_cpu);
+  #endif
+	write_msr(MSR_EFER, read_msr(MSR_EFER) | MSR_EFER_SCE);
+
 	/* LAB 3: your code here. */
 }
 
@@ -26,6 +36,7 @@ static void sys_cputs(const char *s, size_t len)
 	/* Check that the user has permission to read memory [s, s+len).
 	 * Destroy the environment if not. */
 	/* LAB 3: your code here. */
+	assert_user_mem(cur_task, (void *) s, len, 0);
 
 	/* Print the string supplied by the user. */
 	cprintf("%.*s", len, s);
@@ -71,11 +82,19 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	 * Return any appropriate return value.
 	 */
 	/* LAB 3: your code here. */
-	panic("syscall not implemented");
+//	panic("syscall not implemented");
 
 	switch (syscallno) {
-	default:
-		return -ENOSYS;
+		case SYS_cputs:
+			sys_cputs((char *)a1, (int64_t)a2);			
+		case SYS_cgetc:
+			return sys_cgetc();
+		case SYS_getpid:
+			return (pid_t)sys_getpid();
+		case SYS_kill:
+			return sys_kill(a1);
+		default:
+			return -ENOSYS;
 	}
 }
 
@@ -91,9 +110,14 @@ void syscall_handler(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	frame = &cur_task->task_frame;
 
 	/* Issue the syscall. */
+// 	write_msr(MSR_KERNEL_GS_BASE, (uintptr_t) this_cpu);//should maybe be this_cpu->cpu_tss->rsp[0] ?
 	frame->rax = syscall(syscallno, a1, a2, a3, a4, a5, a6);
 
 	/* Return to the current task, which should be running. */
-	task_run(cur_task);
+	#ifdef LAB3_SYSCALL
+	  sysret64(frame);
+	#else
+		task_run(cur_task);
+	#endif
 }
 

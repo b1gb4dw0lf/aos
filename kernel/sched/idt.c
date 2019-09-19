@@ -103,11 +103,62 @@ void print_int_frame(struct int_frame *frame)
 		frame->rip, frame->rflags,
 		frame->cs, frame->ds, frame->ss);
 }
+/* named in idt.h */
+void isr0();
+void isr1();
+void isr2();
+void isr3();
+void isr4();
+void isr5();
+void isr6();
+void isr7();
+void isr8();
+void isr10();
+void isr11();
+void isr12();
+void isr13();
+void isr14();
+void isr16();
+void isr17();
+void isr18();
+void isr19();
+void isr30();
+/* not named in idt.h */
+void isr9();
+void isr20();
+void isr21();
+/* Syscall */
+void isr128();
 
 /* Set up the interrupt handlers. */
 void idt_init(void)
 {
+	set_idt_entry(&idtr.entries[INT_DIVIDE],				isr0, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//FAULT
+	set_idt_entry(&idtr.entries[INT_DEBUG],					isr1, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//FAULT
+	set_idt_entry(&idtr.entries[INT_NMI],						isr2, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//NOT APPLICCABLE
+	set_idt_entry(&idtr.entries[INT_BREAK],					isr3, (IDT_PRESENT | IDT_TRAP_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);//TRAP
+	set_idt_entry(&idtr.entries[INT_OVERFLOW],			isr4, (IDT_PRESENT | IDT_TRAP_GATE32), GDT_KCODE);//TRAP
+	set_idt_entry(&idtr.entries[INT_BOUND],					isr5, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//PAGE FAULT?
+	set_idt_entry(&idtr.entries[INT_INVALID_OP],		isr6, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//FAULT
+	set_idt_entry(&idtr.entries[INT_DEVICE],				isr7, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE);//FAULT
+	set_idt_entry(&idtr.entries[INT_DOUBLE_FAULT],	isr8, (IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //ABORT
+	set_idt_entry(&idtr.entries[INT_TSS],						isr10,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_NO_SEG_PRESENT],isr11,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_SS],						isr12,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_GPF],						isr13,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_PAGE_FAULT],		isr14,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_FPU],						isr16,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_ALIGNMENT],			isr17,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_MCE],						isr18,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //ABORT
+	set_idt_entry(&idtr.entries[INT_SIMD],					isr19,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //FAULT
+	set_idt_entry(&idtr.entries[INT_SECURITY],			isr30,(IDT_PRESENT | IDT_INT_GATE32 ), GDT_KCODE); //No description, FAULT
+  /* reserved - not in intel manual*/
+	set_idt_entry(&idtr.entries[9],				isr9, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE); //ABORT - INTEL RESERVED
+	set_idt_entry(&idtr.entries[20],			isr20,(IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE); //Virtualizatio exception , FAULT
+	set_idt_entry(&idtr.entries[21],			isr21,(IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE); //No description, FAULT
 	/* LAB 3: your code here. */
+	/* syscall */
+	set_idt_entry(&idtr.entries[INT_SYSCALL],				isr128, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);//TRAP
 	load_idt(&idtr);
 }
 
@@ -120,7 +171,18 @@ void int_dispatch(struct int_frame *frame)
 	 */
 	/* LAB 3: your code here. */
 	switch (frame->int_no) {
-	default: break;
+    case INT_BREAK:
+      monitor(frame);
+			return;
+    case INT_PAGE_FAULT:
+      page_fault_handler(frame);
+			return;
+    case INT_SYSCALL:
+/*			 int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
+          uint64_t a4, uint64_t a5, uint64_t a6)*/
+			frame->rax = (uint64_t)syscall(frame->rdi, frame->rsi, frame->rdx, frame->rcx, frame->r8, frame->r9, frame->rbp); //frame->rbp = 7th
+			return;
+  	default: break;
 	}
 
 	/* Unexpected trap: The user process or the kernel has a bug. */
@@ -179,6 +241,10 @@ void page_fault_handler(struct int_frame *frame)
 
 	/* Handle kernel-mode page faults. */
 	/* LAB 3: your code here. */
+	if (!((frame->cs & 3) == 3)) {
+		/* fault triggered from kernel mode */
+		panic("Kernel mode page fault\n");
+	}
 
 	/* We have already handled kernel-mode exceptions, so if we get here, the
 	 * page fault has happened in user mode.

@@ -47,7 +47,24 @@ int ptbl_split(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	/* LAB 2: your code here. */
-	cprintf("NEED SPLIT");
+  if (!(*entry & PAGE_PRESENT) || (*entry & PAGE_HUGE)) return 0;
+  //struct boot_map_info *info = walker->udata;
+  uint64_t index = PAGE_TABLE_INDEX(base);
+  struct page_info *page = pa2page(*entry);
+  //no huge page mapped, allocate a ptlb
+  if (!(*entry & PAGE_HUGE)) {
+    ptbl_alloc(entry, base, end, walker);
+  } else {
+    struct page_info *newpage = page_alloc(ALLOC_ZERO);
+    newpage->pp_ref += 1;
+    *entry = page2pa(newpage) | PAGE_PRESENT | PAGE_WRITE; 
+    struct page_table * ptbl = (struct page_table *) ROUNDDOWN(*entry, PAGE_SIZE);
+    for(int i = 0 ; i < 512; ++i) {
+      newpage = page_alloc(ALLOC_ZERO);
+      newpage->pp_ref += 1;
+      ptbl->entries[i] = ROUNDDOWN(page2pa(newpage), PAGE_SIZE) | PAGE_PRESENT | PAGE_USER;
+    }
+  }
 	return 0;
 }
 
