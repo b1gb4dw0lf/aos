@@ -78,8 +78,11 @@ isr_common_stub:
 syscall64:
 	/* LAB 3: your code here. */
 	/* Store the userspace stack pointer in the per-cpu struct. */
-
+	/* assumption : ring 3 right now */
+	movq %rsp, %gs:CPU_TSS_RSP3
 	/* Load the kernel stack pointer from the per-cpu struct. */
+	swapgs
+	movq %gs:CPU_TSS_RSP0, %rsp
 
 	/* Store the register state into the per-cpu struct. */
 

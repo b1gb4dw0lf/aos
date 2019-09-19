@@ -18,6 +18,7 @@ void syscall_init(void)
   #ifdef LAB3_SYSCALL
 		write_msr(MSR_STAR,  ((uint64_t)GDT_UCODE)<<48  | ((uint64_t)GDT_KCODE)<<32);
 		write_msr(MSR_LSTAR,  (uint64_t)syscall64);
+		write_msr(MSR_SFMASK, FLAGS_TF | FLAGS_IF);//clearinterrupts
 	#endif
 	write_msr(MSR_EFER, read_msr(MSR_EFER) | MSR_EFER_SCE);
 
