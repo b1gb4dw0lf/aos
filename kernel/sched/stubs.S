@@ -86,6 +86,7 @@ syscall64:
 
 	/* Store the register state into the per-cpu struct. */
 
+	swapgs
 	/* Jump to the system call handler. */
 	movq %r10, %rcx
 	pushq %rbp
