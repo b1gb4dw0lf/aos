@@ -35,7 +35,8 @@ static void sys_cputs(const char *s, size_t len)
 	/* Check that the user has permission to read memory [s, s+len).
 	 * Destroy the environment if not. */
 	/* LAB 3: your code here. */
-	assert_user_mem(cur_task, (void *)s, len, PAGE_PRESENT);
+	assert_user_mem(cur_task, (void *) s, len, 0);
+
 	/* Print the string supplied by the user. */
 	cprintf("%.*s", len, s);
 }
