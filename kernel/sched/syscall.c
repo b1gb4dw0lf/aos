@@ -19,7 +19,8 @@ void syscall_init(void)
 		write_msr(MSR_STAR,  ((uint64_t)GDT_UCODE)<<48  | ((uint64_t)GDT_KCODE)<<32);
 		write_msr(MSR_LSTAR,  (uint64_t)syscall64);
 		write_msr(MSR_SFMASK, FLAGS_TF | FLAGS_IF);//clearinterrupts
-	#endif
+    write_msr(MSR_KERNEL_GS_BASE, (uintptr_t) this_cpu);
+  #endif
 	write_msr(MSR_EFER, read_msr(MSR_EFER) | MSR_EFER_SCE);
 
 	/* LAB 3: your code here. */
