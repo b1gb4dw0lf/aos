@@ -70,7 +70,7 @@ isr_common_stub:
 	popq %rdx
 	popq %rcx
 	popq %rax
-	/* stack should have the  required data on the stack */
+	/* iret should have the  required data on the stack */
 	iret
 
 
