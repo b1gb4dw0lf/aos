@@ -110,7 +110,7 @@ void syscall_handler(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	frame = &cur_task->task_frame;
 
 	/* Issue the syscall. */
- 	write_msr(MSR_KERNEL_GS_BASE, GDT_TSS0);//should maybe be this_cpu->cpu_tss->rsp[0] ?
+ 	write_msr(MSR_KERNEL_GS_BASE, (uintptr_t) this_cpu);//should maybe be this_cpu->cpu_tss->rsp[0] ?
 	frame->rax = syscall(syscallno, a1, a2, a3, a4, a5, a6);
 
 	/* Return to the current task, which should be running. */
