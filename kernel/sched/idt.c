@@ -173,16 +173,15 @@ void int_dispatch(struct int_frame *frame)
 	switch (frame->int_no) {
     case INT_BREAK:
       monitor(frame);
-      break;
+			return;
     case INT_PAGE_FAULT:
       page_fault_handler(frame);
-      break;
+			return;
     case INT_SYSCALL:
-			cprintf("syscall made: \n");
 /*			 int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
           uint64_t a4, uint64_t a5, uint64_t a6)*/
 			syscall(frame->rdi, frame->rsi, frame->rdx, frame->rcx, frame->r8, frame->r9, frame->rbp); //frame->rbp = 7th
-      break;
+			return;
   	default: break;
 	}
 
