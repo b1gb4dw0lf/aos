@@ -52,6 +52,27 @@ isr_common_stub:
 	pushq %rsp
 	jmp int_handler
 	/* should probably recover the registers after this by popping it all */
+	/* restore previous state */
+	popq %rax
+	mov %rax, %ds
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %r11
+	popq %r10
+	popq %r9
+	popq %r8
+	popq %rdi
+	popq %rsi
+	popq %rbp
+	popq %rbx
+	popq %rdx
+	popq %rcx
+	popq %rax
+	/* stack should have the  required data on the stack */
+	iret
+
 
 .global syscall64
 syscall64:
