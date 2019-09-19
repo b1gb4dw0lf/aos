@@ -71,7 +71,7 @@ isr_common_stub:
 	popq %rcx
 	popq %rax
 	/* iret should have the  required data on the stack */
-	iret
+	iretq
 
 
 .global syscall64
@@ -108,7 +108,24 @@ iret64:
 	pushq 0x90(%rbx) 
 	pushq 0x88(%rbx)
 	pushq 0x80(%rbx)
+	/* set DS register */
 	mov 0x0(%rbx), %ds
+	/* set other register */
+	mov 0x8(%rbx), %r15
+	mov 0x10(%rbx), %r14
+	mov 0x18(%rbx), %r13
+	mov 0x20(%rbx), %r12
+	mov 0x28(%rbx), %r11
+	mov 0x30(%rbx), %r10
+	mov 0x38(%rbx), %r9
+	mov 0x40(%rbx), %r8
+	mov 0x48(%rbx), %rdi
+	mov 0x50(%rbx), %rsi
+	mov 0x58(%rbx), %rbp
+	mov 0x68(%rbx), %rdx
+	mov 0x70(%rbx), %rcx
+	mov 0x78(%rbx), %rax
+	mov 0x60(%rbx), %rbx 
 	/* Return from the interrupt. */
 	addq $16, %rsp
 	iretq
