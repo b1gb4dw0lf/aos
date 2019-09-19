@@ -90,19 +90,14 @@ syscall64:
 	popq %r15
 	pushq %r15
 	subq $16, %rsp /* r15 at top of stack */
-	/* store all wanted register */
+	/* store all wanted registers */
 	movq %rcx, 0x70(%r15)/* user space return pointer */
-	movq %rax, 0x78(%r15) /* system call number */
 	movq %rbp, 0x58(%r15)
-
 	movq %rbx, 0x58(%r15)
 	movq %r11, 0x28(%r15)
 	movq %r12, 0x20(%r15)
 	movq %r13, 0x18(%r15)
 	movq %r14, 0x10(%r15)
-	mov %cs, 0x98(%r15)
-	mov %ss, 0xb0(%r15)
-	mov %ds, 0x0(%r15)
 	/* should consist of everything thats callee-preserved : */
 	/* rbp, rbx and from r12 to r15, flags,[ CS/ SS ?] */
 	/* V restore r15 state while also storing it */
@@ -139,7 +134,7 @@ iret64:
 	pushq 0x80(%rbx)
 	/* set DS register */
 	mov 0x0(%rbx), %ds
-	/* set other register */
+	/* set other registers */
 	mov 0x8(%rbx), %r15
 	mov 0x10(%rbx), %r14
 	mov 0x18(%rbx), %r13
@@ -163,20 +158,18 @@ iret64:
 sysret64:
 	/* LAB 3: your code here. */
 	/* Recover the register state. */
-	/* not from syscall64: dont forget syscall res is in rax */
+
+	/* note from syscall64: dont forget syscall res is in frame->rax */
 	/* should consist of everything thats callee-preserved : */
-  /* rbp, rbx and from r12 to r15, flags,[ CS/ SS ?] */
-  /* V restore r15 state while also storing it */
-	movq 0x78(%rbx), %rax
+  /* rbp, rbx and from r12 to r15, (flags maybe?) */
 	movq 0x70(%rbx), %rcx
 	movq 0x8(%rbx), %r15
 	movq 0x10(%rbx), %r14
 	movq 0x18(%rbx), %r13
 	movq 0x20(%rbx), %r12
 	movq 0x28(%rbx), %r11
-	//mov 0x98(%rbx), %cs
-	//mov 0xb0(%rbx), %ss
-	//mov 0x0(%rbx), %ds
+	/* lastly put the result of syscall in rax */
+	movq 0x78(%rbx), %rax
 
 	/* restore RSP */
 	movq %gs:CPU_TSS_RSP3, %rsp
