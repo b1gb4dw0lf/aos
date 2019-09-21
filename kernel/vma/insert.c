@@ -62,7 +62,24 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	size_t size, int flags, void *src, size_t len)
 {
 	/* LAB 4: your code here. */
-	return NULL;
+
+	// Allocate VMA
+	struct vma *new_vma = kmalloc(sizeof(struct vma));
+
+	// Copy given info
+	new_vma->vm_flags = flags;
+	new_vma->vm_src = src;
+	new_vma->vm_len = len;
+	new_vma->vm_name = name;
+	new_vma->vm_base = addr;
+	new_vma->vm_end = addr + size;
+
+	// Insert into task rb and task list
+	if (insert_vma(task, new_vma) != 0) {
+    return NULL;
+	}
+
+	return new_vma;
 }
 
 /* A simplified wrapper to add anonymous VMAs, i.e. VMAs not backed by an
