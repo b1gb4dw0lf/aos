@@ -74,10 +74,16 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	new_vma->vm_base = addr;
 	new_vma->vm_end = addr + size;
 
+  rb_node_init(&new_vma->vm_rb);
+
 	// Insert into task rb and task list
 	if (insert_vma(task, new_vma) != 0) {
     return NULL;
 	}
+
+	// TODO: try to merge vma here
+
+	cprintf("New VMA = BASE: %p END: %p SRC: %p\n", new_vma->vm_base, new_vma->vm_end, new_vma->vm_end);
 
 	return new_vma;
 }
