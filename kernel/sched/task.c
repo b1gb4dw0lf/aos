@@ -7,6 +7,7 @@
 #include <kernel/monitor.h>
 #include <kernel/mem.h>
 #include <kernel/sched.h>
+#include <kernel/vma.h>
 
 pid_t pid_max = 1 << 16;
 struct task **tasks = (struct task **)PIDMAP_BASE;
@@ -238,7 +239,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 
   // Get total amount of program headers
 	size_t p_headers = elf_file->e_phnum;
-  uint64_t flags = 0;
+  int flags = 0;
 
   task->task_frame.rip = elf_file->e_entry;
 
@@ -249,12 +250,20 @@ static void task_load_elf(struct task *task, uint8_t *binary)
   for (; ph < eph; ph++) {
     if (ph->p_type != ELF_PROG_LOAD || ph->p_va == 0) continue;
 
+    flags = 0;
+
     cprintf("PH - %d: va: %p pa: %p size: %p\n", ph, ph->p_va, ph->p_pa, ph->p_memsz);
 
-    if (ph->p_flags & ELF_PROG_FLAG_READ) flags |= PAGE_PRESENT;
-    if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= PAGE_WRITE;
-    if (!(ph->p_flags & ELF_PROG_FLAG_EXEC)) flags |= PAGE_NO_EXEC;
+    if (ph->p_flags & ELF_PROG_FLAG_READ) flags |= VM_READ;
+    if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= VM_WRITE;
+    if (ph->p_flags & ELF_PROG_FLAG_EXEC) flags |= VM_EXEC;
 
+    struct vma * exe_vma = add_executable_vma(task, "Exec", (void *) ph->p_pa, ph->p_memsz,
+        flags, binary + ph->p_offset, ph->p_filesz);
+
+    if (!exe_vma) panic("Can't add executable vma\n");
+
+    /*
 		// populate region with WRITE permissions so we can memcpy + memset
     populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, PAGE_WRITE | PAGE_USER) ;
 		// set bytes in section to 0
@@ -263,14 +272,20 @@ static void task_load_elf(struct task *task, uint8_t *binary)
     memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
 		// set actualy region permissions
 		protect_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, flags | PAGE_USER);
+    */
   }
 
 	/* Now map one page for the program's initial stack at virtual address
 	 * USTACK_TOP - PAGE_SIZE.
 	 */
+	/*
 	struct page_info * page = page_alloc(ALLOC_ZERO);
 	page_insert(task->task_pml4, page, (void *) USTACK_TOP - PAGE_SIZE,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
+	*/
+
+  uint64_t stack_flags = PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER;
+	add_anonymous_vma(task, "Stack", (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE, stack_flags);
 
 
 	load_pml4((void *)PADDR(kernel_pml4));
@@ -288,6 +303,8 @@ void task_create(uint8_t *binary, enum task_type type)
 {
   cprintf("Creating a task\n");
   struct task * task = task_alloc(0);
+  rb_init(&task->task_rb);
+  list_init(&task->task_mmap);
   task_load_elf(task, binary);
 
   if (task->task_type == TASK_TYPE_USER) nuser_tasks++;
