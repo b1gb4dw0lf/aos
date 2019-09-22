@@ -261,13 +261,11 @@ void page_init_ext(struct boot_info *boot_info)
 
       if (hpage_aligned(pa)) {
         buddy_map_chunk(kernel_pml4, npages);
-        boot_map_region(kernel_pml4, (void *)(KPAGES + (npages * PAGE_SIZE)),
-                        HPAGE_SIZE, pa, PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
         for (size_t j = 0; j < 512; ++j) {
-          page_free(pa2page(pa + j * PAGE_SIZE));
+					boot_map_region(kernel_pml4, (void *)KERNEL_VMA + pa + (j * PAGE_SIZE),
+													PAGE_SIZE, pa + (j * PAGE_SIZE), PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+					page_free(pa2page(pa + (j * PAGE_SIZE)));
         }
-
-
 			  pa += HPAGE_SIZE - PAGE_SIZE;
 			} else {
         panic("NOT HPAGE ALIGNED");

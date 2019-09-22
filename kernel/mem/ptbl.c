@@ -105,6 +105,8 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
     }
   }
 
+  cprintf("merging entry %p, *entry %p,  base %p, end %p\n", entry, *entry, base, end);
+
   // Allocate a huge page
   struct page_info * new_page = page_alloc(ALLOC_HUGE);
   // Increase the ref
@@ -113,10 +115,10 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
   physaddr_t old_entry = STRIP_ENTRY(*entry);
   struct page_info * old_page = pa2page(old_entry);
 
-  memcpy(page2kva(new_page), page2kva(pa2page(STRIP_ENTRY(table->entries[0]))), HPAGE_SIZE);
-
+  uintptr_t * addr = (void *)KADDR(STRIP_ENTRY(table->entries[0]));
   physaddr_t entry_to_be_merged;
   for (int j = 0; j < 512; ++j) {
+    memcpy(page2kva(new_page) + (j * PAGE_SIZE), KADDR(STRIP_ENTRY(table->entries[j])), PAGE_SIZE);
     entry_to_be_merged = STRIP_ENTRY(table->entries[j]);
     assert(pa2page(entry_to_be_merged)->pp_ref == 1);
     page_decref(pa2page(entry_to_be_merged));
