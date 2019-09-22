@@ -12,30 +12,31 @@
 int do_populate_vma(struct task *task, void *base, size_t size,
 	struct vma *vma, void *udata)
 {
-	/* LAB 4: your code here. */
-
-	if (vma->vm_flags & *((int *) udata)) {
+  /* LAB 4: your code here. */
+	if (!(vma->vm_flags & *((int *) udata))) {
 	  return -1;
 	}
 
 	// Add pages to be able to write and read
 	populate_region(task->task_pml4, base, size,
-	    PAGE_PRESENT | PAGE_WRITE | vma->vm_flags);
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
 	// If this is not an anonymous vma
-	// TODO: Is this exclusive to executables?
 	if (vma->vm_src) {
     // Get source file
-	  struct elf * exe_file = (struct elf *) vma->vm_src;
-
-	  // Check if it is a valid executable
-    if (exe_file->e_magic == ELF_MAGIC) {
-      memcpy(base, vma->vm_src, vma->vm_len);
-    }
+    memcpy(base, vma->vm_src, vma->vm_len);
 	}
 
+	uint64_t page_flags = 0;
+
+	if (vma->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
+	if (vma->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
+	if (!(vma->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
+
+	page_flags |= PAGE_USER;
+
   // Change the protection of physical pages according to vma
-	protect_region(task->task_pml4, base, size, vma->vm_flags);
+	protect_region(task->task_pml4, base, size, page_flags);
 
 	return 0;
 }
