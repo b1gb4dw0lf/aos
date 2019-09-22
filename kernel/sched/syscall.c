@@ -8,6 +8,7 @@
 #include <kernel/console.h>
 #include <kernel/mem.h>
 #include <kernel/sched.h>
+#include <kernel/vma.h>
 
 extern void syscall64(void);
 

@@ -224,8 +224,6 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	 */
 
 	/* LAB 3: your code here. */
-
-	cprintf("Loading ELF\n");
 	load_pml4((void *)PADDR(task->task_pml4));
 
 	// Get elf file
@@ -252,8 +250,6 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 
     flags = 0;
 
-    cprintf("PH - %d: va: %p pa: %p size: %p\n", ph, ph->p_va, ph->p_pa, ph->p_memsz);
-
     if (ph->p_flags & ELF_PROG_FLAG_READ) flags |= VM_READ;
     if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= VM_WRITE;
     if (ph->p_flags & ELF_PROG_FLAG_EXEC) flags |= VM_EXEC;
@@ -274,7 +270,6 @@ static void task_load_elf(struct task *task, uint8_t *binary)
 	add_anonymous_vma(task, "stack", (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE, stack_flags);
 
 	load_pml4((void *)PADDR(kernel_pml4));
-	/* LAB 3: your code here. */
 }
 
 /* Allocates a new task with task_alloc(), loads the named ELF binary using
@@ -286,14 +281,12 @@ static void task_load_elf(struct task *task, uint8_t *binary)
  */
 void task_create(uint8_t *binary, enum task_type type)
 {
-  cprintf("Creating a task\n");
   struct task * task = task_alloc(0);
   rb_init(&task->task_rb);
   list_init(&task->task_mmap);
   task_load_elf(task, binary);
 
   if (task->task_type == TASK_TYPE_USER) nuser_tasks++;
-	/* LAB 3: your code here. */
 }
 
 /* Free the task and all of the memory that is used by it.
@@ -398,6 +391,6 @@ void task_run(struct task *task)
   task_pop_frame(&task->task_frame);
 
 	/* LAB 3: Your code here. */
-	panic("task_run() not yet implemented");
+	panic("task should be running!");
 }
 
