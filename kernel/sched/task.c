@@ -262,31 +262,10 @@ static void task_load_elf(struct task *task, uint8_t *binary)
         flags, binary + ph->p_offset, ph->p_filesz);
 
     if (!exe_vma) panic("Can't add executable vma\n");
-
-    /*
-		// populate region with WRITE permissions so we can memcpy + memset
-    populate_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, PAGE_WRITE | PAGE_USER) ;
-		// set bytes in section to 0
-		memset((void *)ROUNDDOWN(ph->p_va, PAGE_SIZE), '\0', (ROUNDUP(ph->p_va, PAGE_SIZE) - ROUNDDOWN(ph->p_va, PAGE_SIZE)));
-		// copy over the relevant sections
-    memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
-		// set actualy region permissions
-		protect_region(task->task_pml4, (void *)ph->p_va, ph->p_memsz, flags | PAGE_USER);
-    */
   }
 
-	/* Now map one page for the program's initial stack at virtual address
-	 * USTACK_TOP - PAGE_SIZE.
-	 */
-	/*
-	struct page_info * page = page_alloc(ALLOC_ZERO);
-	page_insert(task->task_pml4, page, (void *) USTACK_TOP - PAGE_SIZE,
-	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
-	*/
-
-  uint64_t stack_flags = PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER;
+  uint64_t stack_flags = VM_READ | VM_WRITE;
 	add_anonymous_vma(task, "Stack", (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE, stack_flags);
-
 
 	load_pml4((void *)PADDR(kernel_pml4));
 	/* LAB 3: your code here. */
