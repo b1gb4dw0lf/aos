@@ -23,7 +23,7 @@ static int protect_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	//so the theory is that *entry has some flags which we gotta clear, and then we give it some new damn flags. 
 	//if the flags are equal we try to avoid invalidating
 	//END ANTONI notes
-	struct page_info *page = pa2page(*entry);
+	struct page_info *page = pa2page(STRIP_ENTRY(*entry));
 	
 	if((STRIP_ENTRY(*entry) | info->flags) == *entry) {
 		return 0;
@@ -52,7 +52,7 @@ static int protect_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 			return 0;
 		} else {
 			*entry = STRIP_ENTRY(*entry) | info->flags;// remove flags by rounding down to page size? 
-			tlb_invalidate(info->pml4, page2kva(pa2page(*entry)));
+			tlb_invalidate(info->pml4, page2kva(pa2page(STRIP_ENTRY(*entry))));
 		}
 	} else {
 		return 0;
