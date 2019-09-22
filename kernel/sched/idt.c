@@ -235,7 +235,6 @@ void page_fault_handler(struct int_frame *frame)
 {
 	void *fault_va;
 	unsigned perm = frame->err_code;
-	int ret;
 
 	/* Read the CR2 register to find the faulting address. */
 	fault_va = (void *)read_cr2();
@@ -251,7 +250,9 @@ void page_fault_handler(struct int_frame *frame)
 	 * page fault has happened in user mode.
 	 */
 
-	if (task_page_fault_handler(cur_task, fault_va, perm) == 0) return;
+	if (task_page_fault_handler(cur_task, fault_va, perm) == 0) {
+	  task_run(cur_task);
+	}
 
 	/* Destroy the task that caused the fault. */
 	cprintf("[PID %5u] user fault va %p ip %p\n",
