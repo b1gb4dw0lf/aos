@@ -10,6 +10,7 @@
 #include <kernel/sched/syscall.h>
 
 #include <kernel/sched/task.h>
+#include <kernel/vma.h>
 
 static const char *int_names[256] = {
 	[INT_DIVIDE] = "Divide-by-Zero Error Exception (#DE)",
@@ -233,7 +234,7 @@ void int_handler(struct int_frame *frame)
 void page_fault_handler(struct int_frame *frame)
 {
 	void *fault_va;
-	unsigned perm = 0;
+	unsigned perm = frame->err_code;
 	int ret;
 
 	/* Read the CR2 register to find the faulting address. */
@@ -249,6 +250,8 @@ void page_fault_handler(struct int_frame *frame)
 	/* We have already handled kernel-mode exceptions, so if we get here, the
 	 * page fault has happened in user mode.
 	 */
+
+	if (task_page_fault_handler(cur_task, fault_va, perm) == 0) return;
 
 	/* Destroy the task that caused the fault. */
 	cprintf("[PID %5u] user fault va %p ip %p\n",
