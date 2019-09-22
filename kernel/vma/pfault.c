@@ -10,8 +10,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
 
 	cprintf("Handle PID: %d PFAULT va: %p\n", task->task_pid, va);
 
-  // User should not be asking for kernelspace
-	//if (va >= (void *) KERNEL_LIM) return -1;
+	if (!va) return -1;
 
 	cprintf("Looking for vma\n");
 
@@ -20,16 +19,10 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
 
 	if (!found) return -1;
 
-	cprintf("Found vma\n");
-
 	int vm_flags = 0;
 
-	if (flags & PAGE_PRESENT) vm_flags |= VM_READ;
-	if (flags & PAGE_WRITE) vm_flags |= VM_WRITE;
-	if (!(flags & PAGE_NO_EXEC)) vm_flags |= VM_EXEC;
+	vm_flags |= flags & 2 ? PAGE_WRITE : PAGE_PRESENT;
 
-	populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
-
-	return -1;
+	return populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
 }
 
