@@ -93,9 +93,24 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 			return (pid_t)sys_getpid();
 		case SYS_kill:
 			return sys_kill(a1);
-		default:
+	  case SYS_mquery:
+	    return sys_mquery((struct vma_info *) a1, (void *) a2);
+	  case SYS_mmap:
+      cprintf("mmap");
+      break;
+	  case SYS_munmap:
+      cprintf("munmap");
+      break;
+    case SYS_mprotect:
+      cprintf("mprotect");
+      break;
+    case SYS_madvise:
+      cprintf("madvise");
+      break;
+    default:
 			return -ENOSYS;
 	}
+  return -ENOSYS;
 }
 
 void syscall_handler(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,

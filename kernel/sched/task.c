@@ -271,7 +271,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
   }
 
   uint64_t stack_flags = VM_READ | VM_WRITE;
-	add_anonymous_vma(task, ".stack", (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE, stack_flags);
+	add_anonymous_vma(task, "stack", (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE, stack_flags);
 
 	load_pml4((void *)PADDR(kernel_pml4));
 	/* LAB 3: your code here. */
@@ -314,6 +314,9 @@ void task_free(struct task *task)
 
 	/* Unmap the user pages. */
 	unmap_user_pages(task->task_pml4);
+
+	// Remove vmas
+	free_vmas(task);
 
 	/* Note the task's demise. */
 	cprintf("[PID %5u] Freed task with PID %u\n", cur_task ? cur_task->task_pid : 0,

@@ -20,6 +20,13 @@ void remove_vma(struct task *task, struct vma *vma)
 void free_vmas(struct task *task)
 {
 	/* LAB 4: your code here. */
+
+	struct list * node, * next;
+	struct vma * vma;
+	list_foreach_safe(&task->task_mmap, node, next) {
+    vma = container_of(node, struct vma, vm_mmap);
+    remove_vma(task, vma);
+	}
 }
 
 /* Splits the VMA into the address range [base, base + size) and removes the
