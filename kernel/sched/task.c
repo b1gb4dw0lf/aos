@@ -258,14 +258,20 @@ static void task_load_elf(struct task *task, uint8_t *binary)
     if (ph->p_flags & ELF_PROG_FLAG_WRITE) flags |= VM_WRITE;
     if (ph->p_flags & ELF_PROG_FLAG_EXEC) flags |= VM_EXEC;
 
-    struct vma * exe_vma = add_executable_vma(task, "Exec", (void *) ph->p_pa, ph->p_memsz,
-        flags, binary + ph->p_offset, ph->p_filesz);
+    char * name = "";
+
+    if ((flags & VM_READ) && (flags & VM_WRITE) && !(flags & VM_EXEC)) name = ".data";
+    if ((flags & VM_READ) && !(flags & VM_WRITE) && !(flags & VM_EXEC)) name = ".rodata";
+    if ((flags & VM_READ) && !(flags & VM_WRITE) && (flags & VM_EXEC)) name = ".text";
+
+    struct vma * exe_vma = add_executable_vma(task, name, (void *) ph->p_pa,
+        ph->p_memsz, flags, binary + ph->p_offset, ph->p_filesz);
 
     if (!exe_vma) panic("Can't add executable vma\n");
   }
 
   uint64_t stack_flags = VM_READ | VM_WRITE;
-	add_anonymous_vma(task, "Stack", (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE, stack_flags);
+	add_anonymous_vma(task, ".stack", (void *) USTACK_TOP - PAGE_SIZE, PAGE_SIZE, stack_flags);
 
 	load_pml4((void *)PADDR(kernel_pml4));
 	/* LAB 3: your code here. */

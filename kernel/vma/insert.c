@@ -71,8 +71,9 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	new_vma->vm_src = src;
 	new_vma->vm_len = len;
 	new_vma->vm_name = name;
-	new_vma->vm_base = addr;
-	new_vma->vm_end = addr + size;
+	new_vma->vm_base = ROUNDDOWN(addr, PAGE_SIZE);
+	new_vma->vm_end = ROUNDUP(addr + size, PAGE_SIZE);
+	new_vma->real_base = addr;
 
   rb_node_init(&new_vma->vm_rb);
 

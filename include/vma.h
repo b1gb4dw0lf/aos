@@ -33,5 +33,7 @@ struct vma {
 
 	/* The permission flags of the VMA. */
 	int vm_flags;
+
+	void *real_base;
 };
 

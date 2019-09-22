@@ -24,7 +24,7 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 	// If this is not an anonymous vma
 	if (vma->vm_src) {
     // Get source file
-    memcpy(base, vma->vm_src, vma->vm_len);
+    memcpy(vma->real_base, vma->vm_src, vma->vm_len);
 	}
 
 	uint64_t page_flags = 0;
