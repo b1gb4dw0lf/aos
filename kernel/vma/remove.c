@@ -36,7 +36,7 @@ int do_remove_vma(struct task *task, void *base, size_t size, struct vma *vma,
 	void *udata)
 {
 
-  cprintf("Do remove \n\trange: %p %d\n\tvma: %p %d", base, size, vma->vm_base, vma->vm_end - vma->vm_base);
+  cprintf("Do remove \n\trange: %p %d\n\tvma: %p %d\n", base, size, vma->vm_base, vma->vm_end - vma->vm_base);
 
   // If the range is as big as the vma and contains the addr range
   if (base >= vma->vm_base && (base + size) <= vma->vm_end &&
