@@ -49,13 +49,13 @@ int do_remove_vma(struct task *task, void *base, size_t size, struct vma *vma,
     // Range does not span whole vma, split needed
 			vma = split_vmas(task, vma, base, size);
 
-      if (!vma) return -1;
-    }
+		if (!vma) return -1;
+	
 
-    remove_vma(task, rhs);
-    unmap_vma_range(task, rhs->vm_base, rhs->vm_end - rhs->vm_base);
+		remove_vma(task, vma);
+		unmap_vma_range(task, vma->vm_base, vma->vm_end - vma->vm_base);
 
-    return 0;
+		return 0;
   }
 
 	/* LAB 4: your code here. */
@@ -77,8 +77,8 @@ int do_unmap_vma(struct task *task, void *base, size_t size, struct vma *vma,
 	void *udata)
 {
   /* question, do we have to test for dirty pages? lol */
-	remove_vma_range(task, base, (vma->vm_end - base));
-	unmap_page_range(task->task_pml4, base, (vma->vm_end - base));
+	remove_vma_range(task, base, size);
+	unmap_page_range(task->task_pml4, base, size);
 
 	return 0;
 }
