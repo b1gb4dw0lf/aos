@@ -7,11 +7,10 @@
 int task_page_fault_handler(struct task *task, void *va, int flags)
 {
 	/* LAB 4: your code here. */
-
 	// If it is a null pointer
 	if (!va) return -1;
 
-	struct vma * found = find_vma(NULL, NULL, &task->task_rb, va);
+	struct vma * found = task_find_vma(task, va);
 
 	// If it is not in vma
 	if (!found) return -1;
