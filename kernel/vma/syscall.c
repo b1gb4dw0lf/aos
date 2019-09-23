@@ -161,7 +161,7 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 void sys_munmap(void *addr, size_t len)
 {
 	/* check if area can even be mapped.. */
-	if (addr >= (void*)USER_LIM) return; 
+	if (addr >= (void*)USER_LIM) return ; 
 	/* if range exceeds USER_LIM, change range to [addr, user_LIM] */
 	if ((addr + len) >= (void *)USER_LIM) len = (size_t)((addr + len) - USER_LIM);
 	unmap_vma_range(cur_task, addr, len);
@@ -170,8 +170,12 @@ void sys_munmap(void *addr, size_t len)
 
 int sys_mprotect(void *addr, size_t len, int prot)
 {
+	if (addr >= (void*)USER_LIM) return -ENOSYS; 
+	/* if range exceeds USER_LIM, change range to [addr, user_LIM] */
+	if ((addr + len) >= (void *)USER_LIM) len = (size_t)((addr + len) - USER_LIM);
 	/* LAB 4 (bonus): your code here. */
-	return -ENOSYS;
+	protect_vma_range(cur_task, addr, len, prot);
+	return 0;
 }
 
 int sys_madvise(void *addr, size_t len, int advise)
