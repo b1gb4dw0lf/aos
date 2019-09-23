@@ -1,5 +1,6 @@
 #include <task.h>
 #include <vma.h>
+#include <stdio.h>
 
 #include <kernel/vma.h>
 
@@ -11,6 +12,14 @@
 struct vma *merge_vma(struct task *task, struct vma *lhs, struct vma *rhs)
 {
 	/* LAB 4: your code here. */
+
+	cprintf("Merge: %p %p\n", lhs->vm_base, rhs->vm_base);
+	if ((lhs->vm_end == rhs->vm_base) && (lhs->vm_flags == rhs->vm_flags)) {
+	  lhs->vm_end = rhs->vm_end;
+	  remove_vma(task, rhs);
+	  return lhs;
+	}
+
 	return NULL;
 }
 
@@ -21,6 +30,23 @@ struct vma *merge_vma(struct task *task, struct vma *lhs, struct vma *rhs)
 struct vma *merge_vmas(struct task *task, struct vma *vma)
 {
 	/* LAB 4: your code here. */
+
+	struct vma * left_vma = NULL, * right_vma = NULL;
+
+	left_vma = task_find_vma(task, vma->vm_base - PAGE_SIZE + 1);
+	right_vma = task_find_vma(task, vma->vm_base + PAGE_SIZE + 1);
+
+
+	if (left_vma && (left_vma->vm_end == vma->vm_base) && (left_vma->vm_flags == vma->vm_flags)) {
+    cprintf("Left? %c %p - %p\n", left_vma ? 'Y':'N', left_vma->vm_base, left_vma->vm_end);
+    vma = merge_vma(task, left_vma, vma);
+	}
+
+  if (right_vma && (right_vma->vm_base == vma->vm_end) && (right_vma->vm_flags == vma->vm_flags)) {
+    cprintf("Right? %c %p - %p\n", right_vma ? 'Y':'N', right_vma->vm_base, right_vma->vm_end);
+    vma = merge_vma(task, vma, right_vma);
+  }
+
 	return vma;
 }
 
