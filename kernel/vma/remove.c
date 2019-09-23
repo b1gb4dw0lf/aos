@@ -35,8 +35,34 @@ void free_vmas(struct task *task)
 int do_remove_vma(struct task *task, void *base, size_t size, struct vma *vma,
 	void *udata)
 {
+
+  // If the range is as big as the vma and contains the addr range
+  if (base >= vma->vm_base && (base + size) < vma->vm_end &&
+      (vma->vm_end - vma->vm_base) == ROUNDUP(size, PAGE_SIZE)) {
+
+    remove_vma(task, vma);
+    return 0;
+
+  } else if (base >= vma->vm_base && (base + size) < vma->vm_end) {
+    // Range does not span whole vma, split needed
+
+    struct vma * rhs = split_vma(task, vma, ROUNDDOWN(base, PAGE_SIZE));
+
+    if (!rhs) return -1;
+
+    // If the range is a chunk in the middle
+    if (rhs->vm_end > ROUNDUP(base + size, PAGE_SIZE)) {
+      struct vma * rrhs = split_vma(task, rhs, ROUNDUP(base + size, PAGE_SIZE));
+      if (!rrhs) return -1;
+    }
+
+    remove_vma(task, rhs);
+
+    return 0;
+  }
+
 	/* LAB 4: your code here. */
-	return 0;
+	return -1;
 }
 
 /* Removes the VMAs and any physical pages backing those VMAs for the given
