@@ -92,10 +92,11 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 {
 	/* LAB 4: your code here. */
 
+	cprintf("MMAP - addr: %p size: %d\n", addr, len);
 
 	int valid_flags = 0;
 
-	if (addr >= (void*)USER_LIM || (addr + len) >= (void*)USER_LIM) return MAP_FAILED;
+	if (!addr || addr >= (void*)USER_LIM || (addr + len) >= (void*)USER_LIM) return MAP_FAILED;
 
 	// Do ugly sanity checks. Shh, I know.
 	if (flags & MAP_POPULATE) {
@@ -106,6 +107,10 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 	  valid_flags |= MAP_PRIVATE;
 	  flags ^= MAP_PRIVATE;
 	}
+  if (flags & MAP_FIXED) {
+    valid_flags |= MAP_FIXED;
+    flags ^= MAP_FIXED;
+  }
 	if (flags & MAP_ANONYMOUS) {
 	  valid_flags |= MAP_ANONYMOUS;
 	  flags ^= MAP_ANONYMOUS;
@@ -122,6 +127,17 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 	struct vma * vma = NULL;
 
 	if ((valid_flags & MAP_ANONYMOUS) || (fd == -1)) {
+	  cprintf("Calling add_vma\n");
+
+	  if (valid_flags & MAP_FIXED) {
+	    cprintf("Trying to remove previous mapping\n");
+	    vma = task_find_vma(cur_task, addr);
+	    cprintf("Found? %c\n", vma ? 'Y' : 'N');
+	    if (vma) {
+	      remove_vma_range(cur_task, vma->vm_base, vma->vm_end - vma->vm_base);
+	    }
+	  }
+
 	  vma = add_vma(cur_task, "user", addr, len, vma_flags);
 	} else {
 	  panic("Files not supported yet.");
@@ -132,6 +148,8 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 	if (valid_flags & MAP_POPULATE) {
 	  populate_vma_range(cur_task, vma->vm_base, vma->vm_end - vma->vm_base, vma->vm_flags);
 	}
+
+	cprintf("Returning %p %p\n", vma, vma->vm_base);
 
 	return vma->vm_base;
 }
