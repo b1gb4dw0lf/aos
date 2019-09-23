@@ -57,6 +57,7 @@ int do_remove_vma(struct task *task, void *base, size_t size, struct vma *vma,
     }
 
     remove_vma(task, rhs);
+    unmap_vma_range(task, rhs->vm_base, rhs->vm_end - rhs->vm_base);
 
     return 0;
   }
@@ -80,6 +81,14 @@ int do_unmap_vma(struct task *task, void *base, size_t size, struct vma *vma,
 	void *udata)
 {
 	/* LAB 4: your code here. */
+
+	struct page_info * page = NULL;
+	for (void * addr = base; addr < vma->vm_end; addr += PAGE_SIZE) {
+	  if ((page = page_lookup(task->task_pml4, addr, NULL))) {
+	    page_decref(page);
+	  }
+	}
+
 	return 0;
 }
 
