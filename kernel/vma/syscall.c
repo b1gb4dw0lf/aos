@@ -125,7 +125,8 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 	if (prot & PROT_WRITE) vma_flags |= VM_WRITE;
 
 	// Should X fail when there is no R?
-	if (prot & PROT_WRITE && !(prot & PROT_READ)) return MAP_FAILED;
+	if (((prot & PROT_WRITE) || (prot & PROT_EXEC)) && !(prot & PROT_READ)) return MAP_FAILED;
+	if ((prot & PROT_WRITE) && (prot & PROT_EXEC)) return MAP_FAILED;
 
 	struct vma * vma = NULL;
 
