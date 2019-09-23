@@ -100,7 +100,7 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
       return (uint64_t) sys_mmap((void *) a1, (size_t) a2, (int) a3, (int) a4, (int) a5, (uintptr_t) a6);
     case SYS_munmap:
 			sys_munmap((void *) a1, (size_t) a2);
-      break;
+			return 0;
     case SYS_mprotect:
       cprintf("mprotect\n");
       break;
