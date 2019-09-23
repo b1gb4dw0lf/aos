@@ -47,15 +47,9 @@ int do_remove_vma(struct task *task, void *base, size_t size, struct vma *vma,
 
   } else if (base >= vma->vm_base && (base + size) < vma->vm_end) {
     // Range does not span whole vma, split needed
+			vma = split_vmas(task, vma, base, size);
 
-    struct vma * rhs = split_vma(task, vma, ROUNDDOWN(base, PAGE_SIZE));
-
-    if (!rhs) return -1;
-
-    // If the range is a chunk in the middle
-    if (rhs->vm_end > ROUNDUP(base + size, PAGE_SIZE)) {
-      struct vma * rrhs = split_vma(task, rhs, ROUNDUP(base + size, PAGE_SIZE));
-      if (!rrhs) return -1;
+      if (!vma) return -1;
     }
 
     remove_vma(task, rhs);
