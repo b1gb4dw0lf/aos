@@ -160,6 +160,11 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 
 void sys_munmap(void *addr, size_t len)
 {
+	/* check if area can even be mapped.. */
+	if (addr >= (void*)USER_LIM) return; 
+	/* if range exceeds USER_LIM, change range to [addr, user_LIM] */
+	if ((addr + len) >= (void *)USER_LIM) len = (size_t)((addr + len) - USER_LIM);
+	unmap_vma_range(cur_task, addr, len);
 	/* LAB 4: your code here. */
 }
 

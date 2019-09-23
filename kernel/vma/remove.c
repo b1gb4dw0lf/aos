@@ -82,14 +82,9 @@ int remove_vma_range(struct task *task, void *base, size_t size)
 int do_unmap_vma(struct task *task, void *base, size_t size, struct vma *vma,
 	void *udata)
 {
-	/* LAB 4: your code here. */
-
-	struct page_info * page = NULL;
-	for (void * addr = base; addr < vma->vm_end; addr += PAGE_SIZE) {
-	  if ((page = page_lookup(task->task_pml4, addr, NULL))) {
-	    page_decref(page);
-	  }
-	}
+  /* question, do we have to test for dirty pages? lol */
+	remove_vma_range(task, base, (vma->vm_end - base));
+	unmap_page_range(task->task_pml4, base, (vma->vm_end - base));
 
 	return 0;
 }
