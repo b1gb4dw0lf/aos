@@ -10,19 +10,24 @@
  */
 struct vma *split_vma(struct task *task, struct vma *lhs, void *addr)
 {
-	/* LAB 4: your code here. */
-  size_t size = lhs->vm_end - addr;
-  lhs->vm_end = ROUNDDOWN(addr, PAGE_SIZE); // Update end of original vma
 
 	if (lhs->vm_src) {
-	  cprintf("Splitting BACKED VMA\n");
-    struct vma * new_vma = add_executable_vma(task, lhs->vm_name, addr, size, lhs->vm_flags,
-	      lhs->vm_src + size, lhs->vm_len - (lhs->vm_end - lhs->vm_base));
-    lhs->vm_len = lhs->vm_end - lhs->vm_base;
-    return new_vma;
+	  panic("Splitting BACKED VMA\n");
 	} else {
-    cprintf("Splitting ANON VMA\n");
-    return add_anonymous_vma(task, lhs->vm_name, addr, size, lhs->vm_flags);
+    struct vma *new_vma = kmalloc(sizeof(struct vma));
+    new_vma->vm_flags = lhs->vm_flags;
+    new_vma->vm_src = NULL;
+    new_vma->vm_len = 0;
+    new_vma->vm_name = lhs->vm_name;
+    new_vma->vm_base = addr;
+    new_vma->vm_end = lhs->vm_end;
+
+    rb_node_init(&new_vma->vm_rb);
+
+    if (insert_vma(task, new_vma) < 0) return NULL;
+    lhs->vm_end = addr; // Update end of original vma
+
+    return new_vma;
 	}
 
 	return NULL;
@@ -36,7 +41,19 @@ struct vma *split_vma(struct task *task, struct vma *lhs, void *addr)
  */
 struct vma *split_vmas(struct task *task, struct vma *vma, void *base, size_t size)
 {
-	/* LAB 4: your code here. */
-	return vma;
+  /* LAB 4: your code here. */
+  if (vma->vm_end - vma->vm_base == size) return vma;
+
+  if (vma->vm_base == base) { // Most left one
+    split_vma(task, vma, base + size);
+    return vma;
+  } else {
+    struct vma * s_vma = split_vma(task, vma, base);
+
+    if (s_vma->vm_end - s_vma->vm_base == size) return s_vma;
+
+    split_vma(task, s_vma, base + size);
+    return s_vma;
+  }
 }
 

@@ -35,9 +35,6 @@ void free_vmas(struct task *task)
 int do_remove_vma(struct task *task, void *base, size_t size, struct vma *vma,
 	void *udata)
 {
-
-  cprintf("Do remove \n\trange: %p %d\n\tvma: %p %d\n", base, size, vma->vm_base, vma->vm_end - vma->vm_base);
-
   // If the range is as big as the vma and contains the addr range
   if (base >= vma->vm_base && (base + size) <= vma->vm_end &&
       (vma->vm_end - vma->vm_base) == ROUNDUP(size, PAGE_SIZE)) {
@@ -45,15 +42,13 @@ int do_remove_vma(struct task *task, void *base, size_t size, struct vma *vma,
     remove_vma(task, vma);
     return 0;
 
-  } else if (base >= vma->vm_base && (base + size) < vma->vm_end) {
+  } else if (base >= vma->vm_base && (base + size) <= vma->vm_end) {
     // Range does not span whole vma, split needed
-			vma = split_vmas(task, vma, base, size);
+    vma = split_vmas(task, vma, ROUNDDOWN(base, PAGE_SIZE), ROUNDUP(size, PAGE_SIZE));
 
 		if (!vma) return -1;
-	
 
 		remove_vma(task, vma);
-		unmap_vma_range(task, vma->vm_base, vma->vm_end - vma->vm_base);
 
 		return 0;
   }
