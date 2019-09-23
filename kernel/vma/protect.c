@@ -12,10 +12,21 @@
 int do_protect_vma(struct task *task, void *base, size_t size, struct vma *vma,
 	void *udata)
 {
-	if(vma->vm_flags & *((int *) udata)) return 0;
-
-
 	/* LAB 4 (bonus): your code here. */
+
+	struct vma * s_vma = split_vmas(task, vma, base, size);
+	s_vma->vm_flags = *((int *) udata);
+
+	uint64_t page_flags = 0;
+
+	if (s_vma->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
+	if (s_vma->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
+	if (!(s_vma->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
+
+	page_flags |= PAGE_USER;
+
+	protect_region(task->task_pml4, base, size, page_flags);
+
 	return 0;
 }
 
