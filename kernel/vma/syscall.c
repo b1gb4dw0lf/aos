@@ -91,7 +91,49 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 	uintptr_t offset)
 {
 	/* LAB 4: your code here. */
-	return NULL;
+
+
+	int valid_flags = 0;
+
+	if (addr >= (void*)USER_LIM || (addr + len) >= (void*)USER_LIM) return MAP_FAILED;
+
+	// Do ugly sanity checks. Shh, I know.
+	if (flags & MAP_POPULATE) {
+	  valid_flags |= MAP_POPULATE;
+	  flags ^= MAP_POPULATE;
+	}
+	if (flags & MAP_PRIVATE) {
+	  valid_flags |= MAP_PRIVATE;
+	  flags ^= MAP_PRIVATE;
+	}
+	if (flags & MAP_ANONYMOUS) {
+	  valid_flags |= MAP_ANONYMOUS;
+	  flags ^= MAP_ANONYMOUS;
+	}
+
+	if (flags > 0) return MAP_FAILED;
+
+	// More ugly checks, just scroll down.
+	int vma_flags = 0;
+	if (prot & PROT_READ) vma_flags |= VM_READ;
+	if (prot & PROT_EXEC) vma_flags |= VM_EXEC;
+	if (prot & PROT_WRITE) vma_flags |= VM_WRITE;
+
+	struct vma * vma = NULL;
+
+	if ((valid_flags & MAP_ANONYMOUS) || (fd == -1)) {
+	  vma = add_vma(cur_task, "user", addr, len, vma_flags);
+	} else {
+	  panic("Files not supported yet.");
+	}
+
+	if (!vma) return MAP_FAILED;
+
+	if (valid_flags & MAP_POPULATE) {
+	  populate_vma_range(cur_task, vma->vm_base, vma->vm_end - vma->vm_base, vma->vm_flags);
+	}
+
+	return vma->vm_base;
 }
 
 void sys_munmap(void *addr, size_t len)
