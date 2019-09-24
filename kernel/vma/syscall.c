@@ -193,7 +193,7 @@ int sys_madvise(void *addr, size_t len, int advise)
 	/* LAB 4 (bonus): your code here. */
 	cprintf("madvise call : addr: %p, len : %d, advise : %d\n", addr, len, advise);
 	if(advise & MADV_WILLNEED) {
-		cprintf("MADVISE WILLNEED!\n");
+		populate_region(cur_task->task_pml4, addr, len, (PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER));
 	}
 	if(advise & MADV_DONTNEED) {
 		unmap_page_range(cur_task->task_pml4, addr, len);
