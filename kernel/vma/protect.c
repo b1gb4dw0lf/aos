@@ -2,6 +2,7 @@
 
 #include <kernel/mem.h>
 #include <kernel/vma.h>
+#include <lib.h>
 
 /* Changes the protection flags of the given VMA. Does nothing if the flags
  * would remain the same. Splits up the VMA into the address range
@@ -14,18 +15,27 @@ int do_protect_vma(struct task *task, void *base, size_t size, struct vma *vma,
 {
 	/* LAB 4 (bonus): your code here. */
 
-	struct vma * s_vma = split_vmas(task, vma, base, size);
-	s_vma->vm_flags = *((int *) udata);
+  int flags = *(int *) udata;
 
 	uint64_t page_flags = 0;
 
-	if (s_vma->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
-	if (s_vma->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
-	if (!(s_vma->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
+	if (flags & PROT_READ) page_flags |= PAGE_PRESENT;
+	if (flags & PROT_WRITE) page_flags |= PAGE_WRITE;
+	if (!(flags & PROT_EXEC)) page_flags |= PAGE_NO_EXEC;
+
+	if (((flags & PROT_WRITE) || (flags & PROT_EXEC)) && !(flags & PROT_READ)) {
+	  cprintf("Returning -1\n");
+	  return -1;
+	}
 
 	page_flags |= PAGE_USER;
 
+  struct vma * s_vma = split_vmas(task, vma, base, size);
+  s_vma->vm_flags = *((int *) udata);
+
 	protect_region(task->task_pml4, base, size, page_flags);
+
+	dump_page_tables(task->task_pml4, PAGE_HUGE);
 
 	return 0;
 }
