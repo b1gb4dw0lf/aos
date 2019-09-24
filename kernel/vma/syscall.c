@@ -170,12 +170,22 @@ void sys_munmap(void *addr, size_t len)
 
 int sys_mprotect(void *addr, size_t len, int prot)
 {
-	if (addr >= (void*)USER_LIM) return -1;
-	/* if range exceeds USER_LIM, change range to [addr, user_LIM] */
-	if ((addr + len) >= (void *)USER_LIM) return -1;
-	/* LAB 4 (bonus): your code here. */
+  // If not a valid pointer
+  if (!addr) return -1;
 
-	return protect_vma_range(cur_task, addr, len, prot);
+  // If tries to access beyond user lim
+	if (addr >= (void*)USER_LIM) return -1;
+
+	// if range exceeds USER_LIM
+	if ((addr + len) >= (void *)USER_LIM) return -1;
+
+  // Addr needs to be page aligned
+  if (!page_aligned((uintptr_t)addr)) return -1;
+
+  // W^X protection
+  if ((prot & PROT_EXEC) && (prot & PROT_WRITE)) return -1;
+
+  return protect_vma_range(cur_task, addr, len, prot);
 }
 
 int sys_madvise(void *addr, size_t len, int advise)
