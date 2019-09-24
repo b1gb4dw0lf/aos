@@ -191,12 +191,16 @@ int sys_mprotect(void *addr, size_t len, int prot)
 int sys_madvise(void *addr, size_t len, int advise)
 {
 	/* LAB 4 (bonus): your code here. */
-	cprintf("madvise call : addr: %p, len : %d, advise : %d\n", addr, len, advise);
+	if (!addr) return -1;
+	if (len <= 0) return -1;
+	if (addr >= (void *)USER_LIM) return -1;
 	if(advise & MADV_WILLNEED) {
 		populate_region(cur_task->task_pml4, addr, len, (PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER));
+		return 0;
 	}
 	if(advise & MADV_DONTNEED) {
 		unmap_page_range(cur_task->task_pml4, addr, len);
+		return 0;
 	}
 	return -ENOSYS;
 }
