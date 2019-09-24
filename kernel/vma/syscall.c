@@ -196,11 +196,8 @@ int sys_madvise(void *addr, size_t len, int advise)
 		cprintf("MADVISE WILLNEED!\n");
 	}
 	if(advise & MADV_DONTNEED) {
-//		remove_vma_range(cur_task, addr, len);
-		cprintf("MADIVE_DONTNEED!\n");
-//		unmap_vma_range(cur_task, addr, len);
+		unmap_page_range(cur_task->task_pml4, addr, len);
 	}
-//	if(advise & MADV_MUSTNEED) cprintf("MADVISE MUSTNEED!\n");
 	return -ENOSYS;
 }
 
