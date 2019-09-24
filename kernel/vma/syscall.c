@@ -191,6 +191,16 @@ int sys_mprotect(void *addr, size_t len, int prot)
 int sys_madvise(void *addr, size_t len, int advise)
 {
 	/* LAB 4 (bonus): your code here. */
+	cprintf("madvise call : addr: %p, len : %d, advise : %d\n", addr, len, advise);
+	if(advise & MADV_WILLNEED) {
+		cprintf("MADVISE WILLNEED!\n");
+	}
+	if(advise & MADV_DONTNEED) {
+//		remove_vma_range(cur_task, addr, len);
+		cprintf("MADIVE_DONTNEED!\n");
+//		unmap_vma_range(cur_task, addr, len);
+	}
+//	if(advise & MADV_MUSTNEED) cprintf("MADVISE MUSTNEED!\n");
 	return -ENOSYS;
 }
 
