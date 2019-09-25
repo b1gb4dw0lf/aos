@@ -16,12 +16,14 @@ extern struct list runq;
 struct task *task_clone(struct task *task)
 {
 	/* LAB 5: your code here. */
+	panic("task_clone not yet implemented\n");
 	return NULL;
 }
 
 pid_t sys_fork(void)
 {
 	/* LAB 5: your code here. */
+	panic("sys_fork not yet implemented\n");
 	return -ENOSYS;
 }
 

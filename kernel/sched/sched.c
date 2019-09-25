@@ -21,6 +21,7 @@ void sched_init(void)
 /* Runs the next runnable task. */
 void sched_yield(void)
 {
+	panic("sched_yield not yet implemented\n");
 	/* LAB 5: your code here. */
 }
 

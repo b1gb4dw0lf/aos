@@ -7,12 +7,14 @@
 pid_t sys_wait(int *rstatus)
 {
 	/* LAB 5: your code here. */
+	panic("sys_wait not yet implemented\n");
 	return -ENOSYS;
 }
 
 pid_t sys_waitpid(pid_t pid, int *rstatus, int opts)
 {
 	/* LAB 5: your code here. */
+	panic("sys_waitpid not yet implemented\n");
 	return -ENOSYS;
 }
 
