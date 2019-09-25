@@ -20,6 +20,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
 	vm_flags |= flags & 2 ? PAGE_WRITE : PAGE_PRESENT;
 
   /* LAB 5: your code here. */
+	panic("task_page_fault_handler not yet updated for LAB5\n");
 
   return populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
 }
