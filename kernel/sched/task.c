@@ -12,6 +12,7 @@
 pid_t pid_max = 1 << 16;
 struct task **tasks = (struct task **)PIDMAP_BASE;
 size_t nuser_tasks = 0;
+extern struct list runq;
 
 /* Looks up the respective task for a given PID.
  * If check_perm is non-zero, this function checks if the PID maps to the
@@ -288,8 +289,9 @@ void task_create(uint8_t *binary, enum task_type type)
 
   if (task->task_type == TASK_TYPE_USER) nuser_tasks++;
 	/* LAB 3: your code here. */
-	panic("task_create not yet updated\n");
 	/* LAB 5: your code here. */
+	//panic("task_create not yet updated\n");
+	list_insert_after(&runq, &task->task_node); //add process to run queue
 }
 
 /* Free the task and all of the memory that is used by it.
@@ -388,6 +390,9 @@ void task_run(struct task *task)
 	if (cur_task != NULL) {
     if (cur_task->task_status == TASK_RUNNING) {
       cur_task->task_status = TASK_RUNNABLE;
+			//LAB5-ANTONI also add cur_task to runqueue
+			//task->runs--; ?
+			list_insert_after(&runq, &cur_task->task_node);
     }
   }
 

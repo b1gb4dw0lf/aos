@@ -21,8 +21,20 @@ void sched_init(void)
 /* Runs the next runnable task. */
 void sched_yield(void)
 {
-	panic("sched_yield not yet implemented\n");
 	/* LAB 5: your code here. */
+	struct list *node;
+	struct task *task;
+
+	if(nuser_tasks == 0 ) {
+		sched_halt();
+	} else {
+		node = list_head(&runq); 
+		cprintf("tasks %d : %p\n", nuser_tasks, node);
+		task = container_of(node, struct task, task_node);
+		task_run(task);
+		
+	}
+	panic("sched_yield not yet implemented\n");
 }
 
 /* For now jump into the kernel monitor. */
