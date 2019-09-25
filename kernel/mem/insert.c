@@ -2,6 +2,7 @@
 #include <paging.h>
 
 #include <kernel/mem.h>
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 
 struct insert_info {
 	struct page_table *pml4;
@@ -18,15 +19,16 @@ static int insert_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
     struct page_walker *walker)
 {
 	struct insert_info *info = walker->udata;
-	struct page_info *page = pa2page(*entry);
 
 	assert(page_aligned(page2pa(info->page)));
 
 	// If entry exists
 	if (*entry & PAGE_PRESENT) {
-	    // Decrement ref count of the page
+      struct page_info *page = pa2page(STRIP_ENTRY(*entry));
+
+      // Decrement ref count of the page
 	    page_decref(page);
-        // Invalidate the TLB
+      // Invalidate the TLB
 	    tlb_invalidate(info->pml4, page2kva(page));
 	}
 
@@ -55,7 +57,7 @@ static int insert_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
     // If PDE is present and a huge page
 	if ((*entry & PAGE_PRESENT) && (*entry & PAGE_HUGE)) {
-        page = pa2page(*entry);
+        page = pa2page(STRIP_ENTRY(*entry));
         // Decrement the ref count
         page_decref(page);
         assert(page->pp_ref == 0);
@@ -65,6 +67,7 @@ static int insert_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
 	if (info->page->pp_order == BUDDY_4K_PAGE) {
     // If new page is 4K alloc new table
+    // TODO: What happends to existing other pages that we just removed?
     ptbl_alloc(entry, base, end, walker);
     //insert_pte(entry, base, end, walker);
 	} else if (info->page->pp_order == BUDDY_2M_PAGE) {

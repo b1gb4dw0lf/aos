@@ -260,11 +260,13 @@ void page_init_ext(struct boot_info *boot_info)
 			}
 
       if (hpage_aligned(pa)) {
-        buddy_map_chunk(kernel_pml4, npages);
+        size_t npages_before = npages;
+        buddy_map_chunk(kernel_pml4, PAGE_INDEX(pa));
+        boot_map_region(kernel_pml4, (void *)KERNEL_VMA + (npages_before * PAGE_SIZE),
+                        HPAGE_SIZE, pa, PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+
         for (size_t j = 0; j < 512; ++j) {
-					boot_map_region(kernel_pml4, (void *)KERNEL_VMA + pa + (j * PAGE_SIZE),
-													PAGE_SIZE, pa + (j * PAGE_SIZE), PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
-					page_free(pa2page(pa + (j * PAGE_SIZE)));
+										page_free(pa2page(pa + (j * PAGE_SIZE)));
         }
 			  pa += HPAGE_SIZE - PAGE_SIZE;
 			} else {

@@ -91,18 +91,38 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
   // Get the table if this is not a huge page
   struct page_table * table = (struct page_table *) KADDR(STRIP_ENTRY(*entry));
+  physaddr_t *entry1, *entry2;
   // Get the flags of first entry
-  uint64_t flags = table->entries[0] & ~ROUNDDOWN(table->entries[0], PAGE_SIZE);
+  uint64_t flags = 0;
+  uint64_t entry_flags = 0;
+
+  if (table->entries[0] & PAGE_PRESENT) flags |= PAGE_PRESENT;
+  if (table->entries[0] & PAGE_WRITE) flags |= PAGE_WRITE;
+  if (table->entries[0] & PAGE_NO_EXEC) flags |= PAGE_NO_EXEC;
+  if (table->entries[0] & PAGE_USER) flags |= PAGE_USER;
 
   // Check if all entries in the table are present and have same flags
   for (int i = 0; i < 512; ++i) {
+    if(i > 0) {
+      entry1 = &table->entries[i];
+      entry2 = &table->entries[i - 1];
+      if((STRIP_ENTRY(*entry1) - STRIP_ENTRY(*entry2))!= PAGE_SIZE) {
+        return 0;
+      }
+    }
     if (!table->entries[i] ||
       (table->entries[i] & PAGE_PRESENT && pa2page(STRIP_ENTRY(table->entries[i]))->pp_ref == 0)
       || (table->entries[i] & PAGE_PRESENT && pa2page(STRIP_ENTRY(table->entries[i]))->pp_ref > 1)
-      || !(table->entries[i] & PAGE_PRESENT)
-      || !(table->entries[i] & flags)) {
+      || !(table->entries[i] & PAGE_PRESENT)) {
       return 0;
     }
+
+    if (table->entries[i] & PAGE_PRESENT) entry_flags |= PAGE_PRESENT;
+    if (table->entries[i] & PAGE_WRITE) entry_flags |= PAGE_WRITE;
+    if (table->entries[i] & PAGE_NO_EXEC) entry_flags |= PAGE_NO_EXEC;
+    if (table->entries[i] & PAGE_USER) entry_flags |= PAGE_USER;
+
+    if (flags != entry_flags) return 0;
   }
 
   cprintf("merging entry %p, *entry %p,  base %p, end %p\n", entry, *entry, base, end);
@@ -115,10 +135,10 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
   physaddr_t old_entry = STRIP_ENTRY(*entry);
   struct page_info * old_page = pa2page(old_entry);
 
-  uintptr_t * addr = (void *)KADDR(STRIP_ENTRY(table->entries[0]));
   physaddr_t entry_to_be_merged;
   for (int j = 0; j < 512; ++j) {
-    memcpy(page2kva(new_page) + (j * PAGE_SIZE), KADDR(STRIP_ENTRY(table->entries[j])), PAGE_SIZE);
+    uintptr_t * addr = (void *)KADDR(STRIP_ENTRY(table->entries[j]));
+    memcpy(page2kva(new_page) + (j * PAGE_SIZE), addr, PAGE_SIZE);
     entry_to_be_merged = STRIP_ENTRY(table->entries[j]);
     assert(pa2page(entry_to_be_merged)->pp_ref == 1);
     page_decref(pa2page(entry_to_be_merged));
@@ -127,8 +147,7 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
   assert(old_page->pp_ref == 1);
   page_decref(old_page);
 
-  *entry = page2pa(new_page) | PAGE_PRESENT | PAGE_HUGE;
- // cprintf("PA: %p\n", *entry);
+  *entry = page2pa(new_page) | PAGE_PRESENT | PAGE_HUGE | flags;
 
   return 0;
 }
