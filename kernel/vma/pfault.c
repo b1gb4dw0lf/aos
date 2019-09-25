@@ -19,6 +19,8 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
   int vm_flags = 0;
 	vm_flags |= flags & 2 ? PAGE_WRITE : PAGE_PRESENT;
 
-	return populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
+  /* LAB 5: your code here. */
+
+  return populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
 }
 

@@ -287,6 +287,8 @@ void task_create(uint8_t *binary, enum task_type type)
   task_load_elf(task, binary);
 
   if (task->task_type == TASK_TYPE_USER) nuser_tasks++;
+	/* LAB 3: your code here. */
+	/* LAB 5: your code here. */
 }
 
 /* Free the task and all of the memory that is used by it.
@@ -295,6 +297,7 @@ void task_free(struct task *task)
 {
 	struct task *waiting;
 
+	/* LAB 5: your code here. */
 	/* If we are freeing the current task, switch to the kernel_pml4
 	 * before freeing the page tables, just in case the page gets re-used.
 	 */
@@ -326,6 +329,7 @@ void task_destroy(struct task *task)
 {
 	task_free(task);
 
+	/* LAB 5: your code here. */
 	cprintf("Destroyed the only task - nothing more to do!\n");
 
 	while (1) {

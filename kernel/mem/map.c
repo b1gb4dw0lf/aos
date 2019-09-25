@@ -75,42 +75,23 @@ void boot_map_region(struct page_table *pml4, void *va, size_t size,
 	walk_page_range(pml4, va, (void *)((uintptr_t)va + size), &walker);
 }
 
-void print_pml4(struct page_table * pml4) {
-  for (int i = 0; i < 512; ++i) {
-    cprintf("PML4E %d - %p %c%c%c%c\n", i, pml4->entries[i],
-            (pml4->entries[i] & PAGE_PRESENT) ? 'r' : '-',
-            (pml4->entries[i] & PAGE_WRITE) ? 'w' : '-',
-            (pml4->entries[i] & PAGE_NO_EXEC) ? '-' : 'x',
-            (pml4->entries[i] & PAGE_USER) ? 'u' : '-'
-    );
-    struct page_table * pdpt = (struct page_table *) ROUNDDOWN(pml4->entries[i], PAGE_SIZE);
-    for (int j = 0; pml4->entries[i] && j < 512; ++j) {
-      cprintf("\tPDPT %d - %p %c%c%c%c\n", j, pdpt->entries[j],
-              (pdpt->entries[j] & PAGE_PRESENT) ? 'r' : '-',
-              (pdpt->entries[j] & PAGE_WRITE) ? 'w' : '-',
-              (pdpt->entries[j] & PAGE_NO_EXEC) ? '-' : 'x',
-              (pdpt->entries[j] & PAGE_USER) ? 'u' : '-'
-      );
-      struct page_table * pdir = (struct page_table *) ROUNDDOWN(pdpt->entries[j], PAGE_SIZE);
-      for (int k = 0; pdpt->entries[j] && k < 512; ++k) {
-        cprintf("\t\tPDIR %d - %p %c%c%c%c\n", k, pdir->entries[k],
-                (pdir->entries[k] & PAGE_PRESENT) ? 'r' : '-',
-                (pdir->entries[k] & PAGE_WRITE) ? 'w' : '-',
-                (pdir->entries[k] & PAGE_NO_EXEC) ? '-' : 'x',
-                (pdir->entries[k] & PAGE_USER) ? 'u' : '-'
-        );
-        struct page_table * ptbl = (struct page_table *) ROUNDDOWN(pdir->entries[k], PAGE_SIZE);
-        for (int l = 0; pdir->entries[k] && l < 512; ++l) {
-          cprintf("\t\t\tPTE %d - %p %c%c%c%c\n", l, ptbl->entries[l],
-                  (ptbl->entries[l] & PAGE_PRESENT) ? 'r' : '-',
-                  (ptbl->entries[l] & PAGE_WRITE) ? 'w' : '-',
-                  (ptbl->entries[l] & PAGE_NO_EXEC) ? '-' : 'x',
-                  (ptbl->entries[l] & PAGE_USER) ? 'u' : '-'
-          );
-        }
-      }
-    }
-  }
+/* Creates a mapping in the MMIO region to [pa, pa + size) for
+ * memory-mapped I/O.
+ */
+void *mmio_map_region(physaddr_t pa, size_t size)
+{
+	static uintptr_t base = MMIO_BASE;
+	void *ret;
+
+	size = ROUNDUP(size, PAGE_SIZE);
+	assert(base + size < MMIO_LIM);
+
+	ret = (void *)base;
+	boot_map_region(kernel_pml4, ret, size, pa, PAGE_PRESENT |
+		PAGE_WRITE | PAGE_NO_EXEC | PAGE_WRITE_THROUGH | PAGE_NO_CACHE);
+	base += size;
+
+	return ret;
 }
 
 /* This function parses the program headers of the ELF header of the kernel
