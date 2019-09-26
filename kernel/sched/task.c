@@ -325,7 +325,6 @@ void task_free(struct task *task)
 	/* If we are freeing the current task, switch to the kernel_pml4
 	 * before freeing the page tables, just in case the page gets re-used.
 	 */
-
 	struct list * node, * next;
 	list_foreach_safe(&task->task_children, node, next) {
 	  struct task * child = container_of(node, struct task, task_child);
@@ -348,12 +347,14 @@ void task_free(struct task *task)
   nuser_tasks--;
   list_remove(&task->task_node);
 
+
+  /* Note the task's demise. */
+  cprintf("[PID %5u] Freed task with PID %d\n", cur_task ? cur_task->task_pid : 0,
+          task->task_pid);
+
   /* Free the task. */
   kfree(task);
 
-	/* Note the task's demise. */
-	cprintf("[PID %5u] Freed task with PID %u\n", cur_task ? cur_task->task_pid : 0,
-	    task->task_pid);
 }
 
 /* Frees the task. If the task is the currently running task, then this
