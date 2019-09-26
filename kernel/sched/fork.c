@@ -31,30 +31,18 @@ struct task *task_clone(struct task *task)
 	/* copy VMAs TODO*/
 	list_foreach(&task->task_mmap, node) {
 		vma = container_of(node, struct vma, vm_mmap);
-
-		cprintf("  %016p - %016p [%c%c%c] ",
-      vma->vm_base, vma->vm_end,
-      (vma->vm_flags & VM_READ) ? 'r' : '-',
-      (vma->vm_flags & VM_WRITE) ? 'w' : '-',
-      (vma->vm_flags & VM_EXEC) ? 'x' : '-');
-
-    if (vma->vm_src) {
-      cprintf("%016p - %016p ",
-        vma->vm_src, vma->vm_len);
-    }
-
-    cprintf("\"%s\"\n", vma->vm_name);
 		/* add the vma to clone */
 		struct vma * exe_vma = add_executable_vma(clone, vma->vm_name, (void *)vma->vm_base,
 				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len);
 		if(!exe_vma) panic("Can't add exe vma\n");
 	}
+
 	/* copy page tables TODO*/
 	/* add process to runqueue */
 	list_insert_after(&runq, &clone->task_node);
 
-	panic("task_clone not yet implemented\n");
-	return NULL;
+	//panic("task_clone not yet implemented\n");
+	return clone;
 }
 
 pid_t sys_fork(void)
