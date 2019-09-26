@@ -22,7 +22,6 @@ static int remove_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	if((*entry & PAGE_PRESENT) && !(*entry & PAGE_DIRTY)) {
 
     //decrement reference count
-    assert(page->pp_ref == 1);
     *entry = (physaddr_t) 0x0;
 		page_decref(page);
 	}
