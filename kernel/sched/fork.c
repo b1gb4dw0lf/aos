@@ -8,6 +8,7 @@
 #include <kernel/vma.h>
 
 extern struct list runq;
+extern struct task *task_alloc(pid_t ppid);
 
 /* Allocates a task struct for the child process and copies the register state,
  * the VMAs and the page tables. Once the child task has been set up, it is
@@ -17,13 +18,17 @@ struct task *task_clone(struct task *task)
 {
 	/* LAB 5: your code here. */
 	struct task * clone;
+	pid_t pid;
 	/* first allocate a task struct for the child process */
 	clone = task_alloc(task->task_pid);
+	/* setup task */
+	clone->task_type = task->task_type;
 	/* copy register state */
 	memcpy(&clone->task_frame, &task->task_frame, sizeof(task->task_frame));
 	/* copy VMAs */
 	/* copy page tables */
 	/* add process to runqueue */
+
 	panic("task_clone not yet implemented\n");
 	return NULL;
 }
