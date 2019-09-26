@@ -11,6 +11,32 @@ extern struct list runq;
 extern struct task *task_alloc(pid_t ppid);
 #define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 
+static int get_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker *walker) {
+  if ((*entry & PAGE_PRESENT)) {
+    struct page_info * page = pa2page(STRIP_ENTRY(*entry));
+    page->pp_ref += 1;
+  }
+  return 0;
+}
+
+static int get_pde(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker *walker) {
+  if ((*entry & PAGE_HUGE) && (*entry & PAGE_PRESENT)) {
+    struct page_info * page = pa2page(STRIP_ENTRY(*entry));
+    page->pp_ref += 1;
+  }
+  return 0;
+}
+
+void increase_page_refs(struct page_table *pml4, void *va, size_t size,
+                        uint64_t flags)
+{
+  struct page_walker walker = {
+      .get_pte = get_pte,
+      .get_pde = get_pde,
+  };
+
+  walk_page_range(pml4, va, (void *)((uintptr_t)va + size), &walker);
+}
 
 void copy_deep_ptables(struct page_table * src, struct page_table * dst) {
   // For every pml4 entry
@@ -67,6 +93,7 @@ struct task *task_clone(struct task *task)
 	clone = task_alloc(task->task_pid);
 	rb_init(&clone->task_rb);
   list_init(&clone->task_mmap);
+  list_init(&clone->task_children);
 
   list_insert_after(&task->task_children, &clone->task_child);
 
@@ -75,7 +102,10 @@ struct task *task_clone(struct task *task)
 	/* copy register state */
 	memcpy(&clone->task_frame, &task->task_frame, sizeof(task->task_frame));
 
-	/* copy VMAs TODO*/
+  /* copy page tables TODO*/
+  copy_deep_ptables(task->task_pml4, clone->task_pml4);
+
+  /* copy VMAs TODO*/
 	list_foreach(&task->task_mmap, node) {
 		vma = container_of(node, struct vma, vm_mmap);
 		/* add the vma to clone */
@@ -83,16 +113,8 @@ struct task *task_clone(struct task *task)
 				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len);
 		if(!exe_vma) panic("Can't add exe vma\n");
 
-		// Unmap stack since we want separate stacks
-		// TODO: Fix moving stack
-		if(strcmp(exe_vma->vm_name, "stack") == 0) {
-      unmap_page_range(clone->task_pml4, exe_vma->vm_base,
-                       exe_vma->vm_end - exe_vma->vm_base);
-		}
+    increase_page_refs(clone->task_pml4, exe_vma->vm_base, exe_vma->vm_end - exe_vma->vm_base, 0);
 	}
-
-	/* copy page tables TODO*/
-	copy_deep_ptables(task->task_pml4, clone->task_pml4);
 
 	/* add process to runqueue */
 	list_insert_after(&runq, &clone->task_node);
