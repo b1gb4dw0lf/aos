@@ -22,6 +22,8 @@ struct task *task_clone(struct task *task)
 	struct vma * vma;
 	/* first allocate a task struct for the child process */
 	clone = task_alloc(task->task_pid);
+	rb_init(&clone->task_rb);
+  list_init(&clone->task_mmap);
 	/* setup task */
 	clone->task_type = task->task_type;
 	/* copy register state */
@@ -29,9 +31,6 @@ struct task *task_clone(struct task *task)
 	/* copy VMAs TODO*/
 	list_foreach(&task->task_mmap, node) {
 		vma = container_of(node, struct vma, vm_mmap);
-		if(strcmp(vma->vm_name, "stack") == 0) {
-			continue;
-		}
 
 		cprintf("  %016p - %016p [%c%c%c] ",
       vma->vm_base, vma->vm_end,
@@ -48,6 +47,7 @@ struct task *task_clone(struct task *task)
 		/* add the vma to clone */
 		struct vma * exe_vma = add_executable_vma(clone, vma->vm_name, (void *)vma->vm_base,
 				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len);
+		if(!exe_vma) panic("Can't add exe vma\n");
 	}
 	/* copy page tables TODO*/
 	/* add process to runqueue */
