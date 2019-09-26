@@ -366,11 +366,8 @@ void task_destroy(struct task *task)
 
 	/* LAB 5: your code here. */
 //	panic("task_destroy not yet updated\n");
-	cprintf("Destroyed the only task - nothing more to do!\n");
-
-	while (1) {
-		monitor(NULL);
-	}
+	cprintf("Destroyed task : %d\n", task->task_pid);
+	sched_yield();
 }
 
 /*

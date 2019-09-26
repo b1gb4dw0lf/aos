@@ -120,8 +120,9 @@ struct task *task_clone(struct task *task)
 
 	struct int_frame * frame = &clone->task_frame;
 	frame->rax = 0;
+	task->task_frame.rax=clone->task_pid;
 	dump_page_tables(clone->task_pml4, PAGE_HUGE);
-	list_insert_after(&runq, &clone->task_node);
+	list_push(&runq, &clone->task_node);
 
 	return clone;
 }
