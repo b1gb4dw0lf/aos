@@ -25,9 +25,10 @@ struct task *task_clone(struct task *task)
 	clone->task_type = task->task_type;
 	/* copy register state */
 	memcpy(&clone->task_frame, &task->task_frame, sizeof(task->task_frame));
-	/* copy VMAs */
-	/* copy page tables */
+	/* copy VMAs TODO*/
+	/* copy page tables TODO*/
 	/* add process to runqueue */
+	list_insert_after(&runq, &clone->task_node);
 
 	panic("task_clone not yet implemented\n");
 	return NULL;
