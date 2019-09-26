@@ -29,7 +29,8 @@ void sched_yield(void)
 	if(list_is_empty(&runq)) {
 		sched_halt();
 	} else {
-		node = list_pop(&runq); 
+		node = list_head(&runq); 
+		list_remove(node);
 		task = container_of(node, struct task, task_node);
 		cprintf("runing task with pid : %d\n", task->task_pid);
 		task_run(task);

@@ -311,7 +311,7 @@ void task_create(uint8_t *binary, enum task_type type)
 	/* LAB 3: your code here. */
 	/* LAB 5: your code here. */
 	//panic("task_create not yet updated\n");
-	list_insert_after(&runq, &task->task_node); //add process to run queue
+	list_push(&runq, &task->task_node); //add process to run queue
 	list_init(&task->task_children);
 }
 
@@ -362,16 +362,16 @@ void task_free(struct task *task)
  */
 void task_destroy(struct task *task)
 {
-	task_free(task);
-
-	if(cur_task != task) {
-		cprintf("Destroyed task : %d, returning\n", task->task_pid);
-		return;
+	if(task == cur_task) {
+		cprintf("Destroyed task : %d, sched_yield()\n", task->task_pid);
+		task_free(task);
+		sched_yield();
 	}
+	/* else return */
+	task_free(task);
+	return;
 	/* LAB 5: your code here. */
 //	panic("task_destroy not yet updated\n");
-	cprintf("Destroyed task : %d, sched_yield\n", task->task_pid);
-	sched_yield();
 }
 
 /*
@@ -424,7 +424,7 @@ void task_run(struct task *task)
       cur_task->task_status = TASK_RUNNABLE;
 			//LAB5-ANTONI also add cur_task to runqueue
 			//task->runs--; ?
-			list_insert_after(&runq, &cur_task->task_node);
+			list_push(&runq, &cur_task->task_node);
     }
   }
 
