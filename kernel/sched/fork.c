@@ -96,8 +96,7 @@ struct task *task_clone(struct task *task)
 
 	dump_page_tables(clone->task_pml4, PAGE_HUGE);
 
-	panic("task_clone not yet implemented\n");
-	return NULL;
+	return clone;
 }
 
 pid_t sys_fork(void)
