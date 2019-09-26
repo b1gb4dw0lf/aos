@@ -63,7 +63,7 @@ static int sys_kill(pid_t pid)
 	struct task *task;
 
 	/* LAB 5: your code here. */
-	panic("sys_kill not yet updated for LAB 5\n");
+	//panic("sys_kill not yet updated for LAB 5\n");
 
 	task = pid2task(pid, 1);
 
