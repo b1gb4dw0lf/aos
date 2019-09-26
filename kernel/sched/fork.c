@@ -82,6 +82,9 @@ struct task *task_clone(struct task *task)
 		struct vma * exe_vma = add_executable_vma(clone, vma->vm_name, (void *)vma->vm_base,
 				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len);
 		if(!exe_vma) panic("Can't add exe vma\n");
+
+		// Unmap stack since we want separate stacks
+		// TODO: Fix moving stack
 		if(strcmp(exe_vma->vm_name, "stack") == 0) {
       unmap_page_range(clone->task_pml4, exe_vma->vm_base,
                        exe_vma->vm_end - exe_vma->vm_base);
