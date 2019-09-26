@@ -300,7 +300,6 @@ void task_free(struct task *task)
 {
 	struct task *waiting;
 
-	panic("task_free not yet updated\n");
 	/* LAB 5: your code here. */
 	/* If we are freeing the current task, switch to the kernel_pml4
 	 * before freeing the page tables, just in case the page gets re-used.
@@ -321,6 +320,9 @@ void task_free(struct task *task)
 	/* Note the task's demise. */
 	cprintf("[PID %5u] Freed task with PID %u\n", cur_task ? cur_task->task_pid : 0,
 	    task->task_pid);
+
+	nuser_tasks--;
+	list_remove(&task->task_node);
 
 	/* Free the task. */
 	kfree(task);

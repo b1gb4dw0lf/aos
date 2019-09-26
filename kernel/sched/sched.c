@@ -32,7 +32,6 @@ void sched_yield(void)
 		cprintf("tasks %d : %p\n", nuser_tasks, node);
 		task = container_of(node, struct task, task_node);
 		task_run(task);
-		
 	}
 	panic("sched_yield not yet implemented\n");
 }
