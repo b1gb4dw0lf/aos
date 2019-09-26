@@ -103,13 +103,6 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
   // Check if all entries in the table are present and have same flags
   for (int i = 0; i < 512; ++i) {
-    if(i > 0) {
-      entry1 = &table->entries[i];
-      entry2 = &table->entries[i - 1];
-      if((STRIP_ENTRY(*entry1) - STRIP_ENTRY(*entry2))!= PAGE_SIZE) {
-        return 0;
-      }
-    }
     if (!table->entries[i] ||
       (table->entries[i] & PAGE_PRESENT && pa2page(STRIP_ENTRY(table->entries[i]))->pp_ref == 0)
       || (table->entries[i] & PAGE_PRESENT && pa2page(STRIP_ENTRY(table->entries[i]))->pp_ref > 1)
