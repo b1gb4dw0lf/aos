@@ -25,7 +25,7 @@ void sched_yield(void)
 	struct list *node;
 	struct task *task;
 
-	if(nuser_tasks == 0 ) {
+	if(nuser_tasks == 0 && list_is_empty(&runq)) {
 		sched_halt();
 	} else {
 		node = list_head(&runq); 
