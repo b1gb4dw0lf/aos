@@ -22,15 +22,16 @@ void sched_init(void)
 void sched_yield(void)
 {
 	/* LAB 5: your code here. */
+	cprintf("sched_yield call\n");
 	struct list *node;
 	struct task *task;
 
-	if(nuser_tasks == 0 && list_is_empty(&runq)) {
+	if(list_is_empty(&runq)) {
 		sched_halt();
 	} else {
-		node = list_head(&runq); 
-		cprintf("tasks %d : %p\n", nuser_tasks, node);
+		node = list_pop(&runq); 
 		task = container_of(node, struct task, task_node);
+		cprintf("runing task with pid : %d\n", task->task_pid);
 		task_run(task);
 	}
 	panic("sched_yield not yet implemented\n");

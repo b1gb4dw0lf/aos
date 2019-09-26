@@ -117,9 +117,11 @@ struct task *task_clone(struct task *task)
 	}
 
 	/* add process to runqueue */
-	list_insert_after(&runq, &clone->task_node);
 
+	struct int_frame * frame = &clone->task_frame;
+	frame->rax = 0;
 	dump_page_tables(clone->task_pml4, PAGE_HUGE);
+	list_insert_after(&runq, &clone->task_node);
 
 	return clone;
 }
@@ -129,6 +131,6 @@ pid_t sys_fork(void)
 	/* LAB 5: your code here. */
 	struct task * clone;
 	clone = task_clone(cur_task);
-	return clone->task_pid;
+	return  clone->task_pid;
 }
 
