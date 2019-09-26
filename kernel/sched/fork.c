@@ -36,6 +36,8 @@ struct task *task_clone(struct task *task)
 pid_t sys_fork(void)
 {
 	/* LAB 5: your code here. */
+	struct task * clone;
+	clone = task_clone(cur_task);
 	panic("sys_fork not yet implemented\n");
 	return -ENOSYS;
 }
