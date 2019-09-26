@@ -16,6 +16,14 @@ extern struct list runq;
 struct task *task_clone(struct task *task)
 {
 	/* LAB 5: your code here. */
+	struct task * clone;
+	/* first allocate a task struct for the child process */
+	clone = task_alloc(task->task_pid);
+	/* copy register state */
+	memcpy(&clone->task_frame, &task->task_frame, sizeof(task->task_frame));
+	/* copy VMAs */
+	/* copy page tables */
+	/* add process to runqueue */
 	panic("task_clone not yet implemented\n");
 	return NULL;
 }
