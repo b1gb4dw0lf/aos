@@ -132,9 +132,7 @@ static int task_setup_vas(struct task *task)
         struct page_table * new_pt = (struct page_table *) KADDR(STRIP_ENTRY(new_pdir->entries[k]));
 
         // For every pt entry
-        for (int l = 0; l < 512; ++l) {
-          new_pt->entries[l] = pt->entries[l];
-        }
+        memcpy(new_pt, pt, PAGE_SIZE);
       }
     }
   }
@@ -314,6 +312,7 @@ void task_create(uint8_t *binary, enum task_type type)
 	/* LAB 5: your code here. */
 	//panic("task_create not yet updated\n");
 	list_insert_after(&runq, &task->task_node); //add process to run queue
+	list_init(&task->task_children);
 }
 
 /* Free the task and all of the memory that is used by it.
