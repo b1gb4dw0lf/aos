@@ -98,26 +98,48 @@ static int task_setup_vas(struct task *task)
 
 	task->task_pml4 = page2kva(page);
 
+  // For every pml4 entry
   for (int i = 0; i < 512; ++i) {
-    if (kernel_pml4->entries[i] & PAGE_PRESENT) {
-      ptbl_alloc(&task->task_pml4->entries[i], 0, 0, NULL);
-      struct page_table * pdpt = (struct page_table *) KADDR(STRIP_ENTRY(kernel_pml4->entries[i]));
-      struct page_table * task_pdpt = (struct page_table *) KADDR(STRIP_ENTRY(task->task_pml4->entries[i]));
-      for (int j = 0; j < 512; ++j) {
-        if (pdpt->entries[j] & PAGE_PRESENT && pdpt->entries[j] & PAGE_HUGE) {
-          task_pdpt->entries[j] = pdpt->entries[j];
-        } else if (pdpt->entries[j] & PAGE_PRESENT) {
-          ptbl_alloc(&task_pdpt->entries[j], 0, 0, NULL);
-          struct page_table * pdir = (struct page_table *) KADDR(STRIP_ENTRY(pdpt->entries[j]));
-          struct page_table * task_pdir = (struct page_table *) KADDR(STRIP_ENTRY(task_pdpt->entries[j]));
 
-          for (int k = 0; k < 512; ++k) {
-            task_pdir->entries[k] = pdir->entries[k];
-          }
+    if (!(kernel_pml4->entries[i] & PAGE_PRESENT)) continue;
+
+    struct page_table * pdpt = (struct page_table *) KADDR(STRIP_ENTRY(kernel_pml4->entries[i]));
+
+    ptbl_alloc(&task->task_pml4->entries[i], 0, 0, NULL);
+    struct page_table *new_pdpt = (struct page_table *) KADDR(STRIP_ENTRY(task->task_pml4->entries[i]));
+
+    // For every pdpt entry
+    for (int j = 0; j < 512; ++j) {
+
+      if (!(pdpt->entries[j] & PAGE_PRESENT)) continue;
+
+      struct page_table * pdir = (struct page_table *) KADDR(STRIP_ENTRY(pdpt->entries[j]));
+      ptbl_alloc(&new_pdpt->entries[j], 0, 0, NULL);
+      struct page_table * new_pdir = (struct page_table *) KADDR(STRIP_ENTRY(new_pdpt->entries[j]));
+
+      // For every pdir entry
+      for (int k = 0; k < 512; ++k) {
+
+        if (!(pdir->entries[k] & PAGE_PRESENT)) continue;
+
+        if (pdir->entries[k] & PAGE_HUGE) {
+          new_pdir->entries[k] = pdir->entries[k];
+          continue;
+        }
+
+        struct page_table * pt = (struct page_table *) KADDR(STRIP_ENTRY(pdir->entries[k]));
+        ptbl_alloc(&new_pdir->entries[k], 0, 0, NULL);
+        struct page_table * new_pt = (struct page_table *) KADDR(STRIP_ENTRY(new_pdir->entries[k]));
+
+        // For every pt entry
+        for (int l = 0; l < 512; ++l) {
+          new_pt->entries[l] = pt->entries[l];
         }
       }
     }
   }
+
+  cprintf("Done\n");
 
 	return 0;
 }
