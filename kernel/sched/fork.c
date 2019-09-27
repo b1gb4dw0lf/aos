@@ -94,8 +94,10 @@ struct task *task_clone(struct task *task)
 	rb_init(&clone->task_rb);
   list_init(&clone->task_mmap);
   list_init(&clone->task_children);
+  list_init(&clone->task_node);
 
   list_insert_after(&task->task_children, &clone->task_child);
+
 
   /* setup task */
 	clone->task_type = task->task_type;
@@ -113,16 +115,22 @@ struct task *task_clone(struct task *task)
 				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len);
 		if(!exe_vma) panic("Can't add exe vma\n");
 
-    increase_page_refs(clone->task_pml4, exe_vma->vm_base, exe_vma->vm_end - exe_vma->vm_base, 0);
+	  if(strcmp(exe_vma->vm_name, "stack") == 0) {
+	    populate_vma_range(clone, exe_vma->vm_base,
+	        exe_vma->vm_end - exe_vma->vm_base, exe_vma->vm_flags);
+	    struct page_info * new_stack = page_lookup(clone->task_pml4,
+	        (void *)USTACK_TOP - PAGE_SIZE, NULL);
+	    cprintf("Copying stack to %p\n", page2kva(new_stack));
+	    memcpy(page2kva(new_stack), (void *)USTACK_TOP - PAGE_SIZE, PAGE_SIZE);
+	  } else {
+      increase_page_refs(clone->task_pml4, exe_vma->vm_base,
+          exe_vma->vm_end - exe_vma->vm_base, 0);
+    }
 	}
 
 	/* add process to runqueue */
-
-	struct int_frame * frame = &clone->task_frame;
-	frame->rax = 0;
-	task->task_frame.rax=clone->task_pid;
+  list_push(&runq, &clone->task_node);
 	dump_page_tables(clone->task_pml4, PAGE_HUGE);
-	list_push(&runq, &clone->task_node);
 
 	return clone;
 }

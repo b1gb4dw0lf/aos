@@ -369,9 +369,7 @@ void task_destroy(struct task *task)
 	}
 	/* else return */
 	task_free(task);
-	return;
 	/* LAB 5: your code here. */
-//	panic("task_destroy not yet updated\n");
 }
 
 /*

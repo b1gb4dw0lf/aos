@@ -26,6 +26,11 @@ void sched_yield(void)
 	struct list *node;
 	struct task *task;
 
+	list_foreach(&runq, node) {
+    task = container_of(node, struct task, task_node);
+	  cprintf("Item %d\n", task->task_pid);
+	}
+
 	if(list_is_empty(&runq)) {
 		sched_halt();
 	} else {
