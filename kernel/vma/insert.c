@@ -162,7 +162,7 @@ struct vma *add_vma(struct task *task, char *name, void *addr, size_t size,
   if (!addr) {
     // Address is null. Now, find a suitable address by scanning the address space
 
-    base = do_vma_loop(task, size, (void *) USER_LIM - PAGE_SIZE, 0);
+    base = do_vma_loop(task, size, (void *) USER_LIM - 5 * PAGE_SIZE, 0);
     return add_anonymous_vma(task, name, base, size, flags);
 
   } else if (addr && (task_find_vma(task, addr) != 0)

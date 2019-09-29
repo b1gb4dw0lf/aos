@@ -96,7 +96,7 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 
 	int valid_flags = 0;
 
-	if (!addr || addr >= (void*)USER_LIM || (addr + len) >= (void*)USER_LIM) return MAP_FAILED;
+	if (addr && (addr >= (void*)USER_LIM || (addr + len) >= (void*)USER_LIM)) return MAP_FAILED;
 
 	// Do ugly sanity checks. Shh, I know.
 	if (flags & MAP_POPULATE) {
