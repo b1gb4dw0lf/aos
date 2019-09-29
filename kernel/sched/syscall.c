@@ -85,8 +85,6 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	 * Call the function corresponding to the 'syscallno' parameter.
 	 * Return any appropriate return value.
 	 */
-	/* LAB 3: your code here. */
-//	panic("syscall not implemented");
 
 	switch (syscallno) {
 		case SYS_cputs:

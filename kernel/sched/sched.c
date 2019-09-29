@@ -22,20 +22,18 @@ void sched_init(void)
 void sched_yield(void)
 {
 	/* LAB 5: your code here. */
-	cprintf("sched_yield call\n");
-	struct list *node;
-	struct task *task;
+	struct list *node, *temp;
+	struct task *task, *temp_task;
 
-	list_foreach(&runq, node) {
-    task = container_of(node, struct task, task_node);
-	  cprintf("Item %d\n", task->task_pid);
-	}
+	cprintf("Called yield\n");
 
-	if(list_is_empty(&runq)) {
+	if(list_is_empty(&runq) && cur_task == NULL) {
+	  cprintf("Halt the cpu\n");
 		sched_halt();
-	} else {
-		node = list_head(&runq); 
-		list_remove(node);
+	} else if (list_is_empty(&runq) && cur_task) {
+    task_run(cur_task);
+	}else {
+		node = list_pop_left(&runq);
 		task = container_of(node, struct task, task_node);
 		cprintf("runing task with pid : %d\n", task->task_pid);
 		task_run(task);

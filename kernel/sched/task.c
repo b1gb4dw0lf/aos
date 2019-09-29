@@ -325,11 +325,14 @@ void task_free(struct task *task)
 	/* If we are freeing the current task, switch to the kernel_pml4
 	 * before freeing the page tables, just in case the page gets re-used.
 	 */
+
+	/*
+	cprintf("Freeing children\n");
 	struct list * node, * next;
 	list_foreach_safe(&task->task_children, node, next) {
 	  struct task * child = container_of(node, struct task, task_child);
 	  task_free(child);
-	}
+	}*/
 
 	if (task == cur_task) {
 		load_pml4((struct page_table *)PADDR(kernel_pml4));
@@ -352,6 +355,10 @@ void task_free(struct task *task)
   cprintf("[PID %5u] Freed task with PID %d\n", cur_task ? cur_task->task_pid : 0,
           task->task_pid);
 
+  if (cur_task->task_pid == task->task_pid) {
+    cur_task = NULL;
+  }
+
   /* Free the task. */
   kfree(task);
 
@@ -362,14 +369,18 @@ void task_free(struct task *task)
  */
 void task_destroy(struct task *task)
 {
-	if(task == cur_task) {
-		cprintf("Destroyed task : %d, sched_yield()\n", task->task_pid);
-		task_free(task);
-		sched_yield();
-	}
 	/* else return */
-	task_free(task);
-	/* LAB 5: your code here. */
+
+  cprintf("Destroyed the only task - nothing more to do!\n");
+
+  if (task->task_pid == cur_task->task_pid) {
+    task_free(task);
+	  sched_yield();
+	} else {
+    task_free(task);
+  }
+
+  /* LAB 5: your code here. */
 }
 
 /*
@@ -417,13 +428,16 @@ void task_run(struct task *task)
 	 *  e->task_frame to sensible values.
 	 */
 
-	if (cur_task != NULL) {
+
+	if (cur_task) {
     if (cur_task->task_status == TASK_RUNNING) {
       cur_task->task_status = TASK_RUNNABLE;
-			//LAB5-ANTONI also add cur_task to runqueue
-			//task->runs--; ?
-			list_push(&runq, &cur_task->task_node);
     }
+  }
+
+	if (cur_task && cur_task->task_pid != task->task_pid) {
+	  cprintf("Inserting into list\n");
+	  list_insert_after(&runq, &cur_task->task_node);
   }
 
   cur_task = task;
