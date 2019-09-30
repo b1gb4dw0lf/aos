@@ -35,26 +35,29 @@ pid_t sys_waitpid(pid_t pid, int *rstatus, int opts)
 {
 	/* LAB 5: your code here. */
 
+	cprintf("waitpid\n");
   if (list_is_empty(&cur_task->task_children)) return -ECHILD;
   if (pid <= 0) return -ECHILD;
 
+  cprintf("waitpid 2\n");
+
   if (!list_is_empty(&cur_task->task_zombies)) {
     struct list *node, *next;
-    struct task * task;
+    struct task *task;
     list_foreach_safe(&cur_task->task_zombies, node, next) {
-      task = container_of(node, struct task,task_node);
+      task = container_of(node, struct task, task_node);
       if (task->task_pid == pid) {
         cprintf("FFFreeing %d\n", task->task_pid);
         task_free(task);
         return pid;
       }
     }
-  } else {
-    cur_task->task_wait = pid2task(pid, 0);
-    cur_task->task_status = TASK_NOT_RUNNABLE;
-    list_remove(&cur_task->task_node);
-    sched_yield();
   }
+
+  cur_task->task_wait = pid2task(pid, 0);
+  cur_task->task_status = TASK_NOT_RUNNABLE;
+  list_remove(&cur_task->task_node);
+  sched_yield();
 
 	panic("sys_waitpid not yet implemented\n");
 	return -ENOSYS;
