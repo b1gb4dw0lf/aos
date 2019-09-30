@@ -29,17 +29,19 @@ static int insert_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
       // Decrement ref count of the page
 	    page_decref(page);
       // Invalidate the TLB
-	    tlb_invalidate(info->pml4, page2kva(page));
 	}
+  tlb_invalidate(info->pml4, (void *) base);
 
-    // Increase the ref count of new page
-    info->page->pp_ref += 1;
-    // Set the flags?
-    physaddr_t newAddr = page2pa(info->page) | info->flags | PAGE_PRESENT;
-    // Set the entry to new page
-    *entry = newAddr;
 
-	return 0;
+  // Increase the ref count of new page
+  info->page->pp_ref += 1;
+  // Set the flags?
+  physaddr_t newAddr = page2pa(info->page) | info->flags | PAGE_PRESENT;
+
+  // Set the entry to new page
+  *entry = newAddr;
+
+  return 0;
 }
 
 /* If the PDE already points to a present huge page, the reference count of the

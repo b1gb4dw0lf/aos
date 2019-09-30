@@ -110,30 +110,35 @@ struct task *task_clone(struct task *task)
 	list_foreach(&task->task_mmap, node) {
 		vma = container_of(node, struct vma, vm_mmap);
 		/* add the vma to clone */
-		struct vma * exe_vma = add_executable_vma(clone, vma->vm_name, (void *)vma->vm_base,
-				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len);
-		// Should we add this to function?
-		exe_vma->page_addr = vma->page_addr;
+		struct vma * exe_vma = add_executable_vma_v2(clone, vma->vm_name, (void *)vma->vm_base,
+				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len, vma->page_addr);
 
 		if(!exe_vma) panic("Can't add exe vma\n");
 
+		// Force stack to be mapped since it is going to be used to pop things
 	  if(strcmp(exe_vma->vm_name, "stack") == 0) {
+	    // Insert new pages on existing stacks address in clone process
 	    populate_vma_range(clone, exe_vma->vm_base,
 	        exe_vma->vm_end - exe_vma->vm_base, exe_vma->vm_flags);
+
+	    // Get the page from clone
 	    struct page_info * new_stack = page_lookup(clone->task_pml4,
 	        (void *)USTACK_TOP - PAGE_SIZE, NULL);
+
 	    cprintf("Copying stack to %p\n", page2kva(new_stack));
+	    // Copy to clone's stack vaddr from parent task's stack
 	    memcpy(page2kva(new_stack), (void *)USTACK_TOP - PAGE_SIZE, PAGE_SIZE);
 
 	  } else {
-      vma->isShared = 1;
-      exe_vma->isShared = 1;
-
-	    // Increase refs if mapped
-      increase_page_refs(clone->task_pml4, exe_vma->vm_base,
-          exe_vma->vm_end - exe_vma->vm_base, 0);
+	    // Set the vmas to shared
+      vma->is_shared = 1;
+      exe_vma->is_shared = 1;
 
       if (vma->page_addr) {
+        // Increase refs if mapped
+        increase_page_refs(clone->task_pml4, exe_vma->vm_base,
+                           exe_vma->vm_end - exe_vma->vm_base, 0);
+
         // Change shared pages' protection to read only
         protect_region(task->task_pml4, vma->vm_base,
                        vma->vm_end - vma->vm_base, PAGE_PRESENT | PAGE_NO_EXEC | PAGE_USER);
@@ -145,7 +150,8 @@ struct task *task_clone(struct task *task)
 
 	/* add process to runqueue */
   list_push(&runq, &clone->task_node);
-	dump_page_tables(clone->task_pml4, PAGE_HUGE);
+
+	cprintf("Clone DONE\n");
 
 	return clone;
 }
@@ -155,6 +161,9 @@ pid_t sys_fork(void)
 	/* LAB 5: your code here. */
 	struct task * clone;
 	clone = task_clone(cur_task);
+	clone->task_frame.rax = 0;
+	cur_task->task_frame.rax = clone->task_pid;
+	cprintf("Fork DONE\n");
 	return  clone->task_pid;
 }
 

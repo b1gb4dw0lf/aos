@@ -38,7 +38,7 @@ struct vma {
 	void *real_base;
 
 	// Used to determine if to be mapped area is shared
-	int isShared;
+	int is_shared;
 
 	void * page_addr;
 };

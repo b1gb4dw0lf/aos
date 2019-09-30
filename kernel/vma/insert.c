@@ -74,7 +74,8 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	new_vma->vm_base = ROUNDDOWN(addr, PAGE_SIZE);
 	new_vma->vm_end = ROUNDUP(addr + size, PAGE_SIZE);
 	new_vma->real_base = addr;
-	new_vma->isShared = 0;
+	new_vma->is_shared = 0;
+	new_vma->page_addr = NULL;
 
   rb_node_init(&new_vma->vm_rb);
 
@@ -84,10 +85,14 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	}
 
 	merge_vmas(task, new_vma);
-
-	cprintf("New VMA = BASE: %p END: %p SRC: %p\n", new_vma->vm_base, new_vma->vm_end, new_vma->vm_end);
-
 	return new_vma;
+}
+
+struct vma *add_executable_vma_v2(struct task *task, char *name, void *addr,
+                               size_t size, int flags, void *src, size_t len, void * page_addr) {
+  struct vma * vma = add_executable_vma(task, name, addr, size, flags, src, len);
+  vma->page_addr = page_addr;
+  return vma;
 }
 
 /* A simplified wrapper to add anonymous VMAs, i.e. VMAs not backed by an
@@ -121,8 +126,6 @@ static void * do_vma_loop(struct task * task, size_t size, void * start, void * 
   size_t found_consecutive_pages = 0;
   void * base = NULL;
 
-  cprintf("Adding vma of size %d with %d pages\n", size, num_of_pages);
-
   for (void * next = start;
        end < next && next < (void *) USER_LIM ; next -= PAGE_SIZE) {
     // If vma addr exists in task continue
@@ -138,8 +141,6 @@ static void * do_vma_loop(struct task * task, size_t size, void * start, void * 
     base = next;
 
     if ((found_consecutive_pages == num_of_pages) && base) {
-      cprintf("Found %d pages starting from %p - %p\n",
-              found_consecutive_pages, base, base + ROUNDUP(size, PAGE_SIZE));
       return base;
     }
   }
