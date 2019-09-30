@@ -65,7 +65,6 @@ void task_init(void)
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
 	 * to tasks.
 	 */
-	cprintf("Initializing Tasks\n");
 
 	size_t total_pages = (pid_max * sizeof(struct task *)) / PAGE_SIZE;
 	for (size_t i = 0; i < total_pages; ++i) {
@@ -80,7 +79,6 @@ void task_init(void)
 /* Sets up the virtual address space for the task. */
 static int task_setup_vas(struct task *task)
 {
-  cprintf("Setting up the VAS\n");
 	struct page_info *page;
 
 	/* Allocate a page for the page table. */
@@ -136,8 +134,6 @@ static int task_setup_vas(struct task *task)
       }
     }
   }
-
-  cprintf("Done\n");
 
 	return 0;
 }
@@ -428,7 +424,6 @@ void task_run(struct task *task)
 	 *  e->task_frame to sensible values.
 	 */
 
-
 	if (cur_task) {
     if (cur_task->task_status == TASK_RUNNING) {
       cur_task->task_status = TASK_RUNNABLE;
@@ -436,7 +431,6 @@ void task_run(struct task *task)
   }
 
 	if (cur_task && cur_task->task_pid != task->task_pid) {
-	  cprintf("Inserting into list\n");
 	  list_insert_after(&runq, &cur_task->task_node);
   }
 
