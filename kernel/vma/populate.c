@@ -29,14 +29,20 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 
 	uint64_t page_flags = 0;
 
-	if (vma->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
-	if (vma->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
-	if (!(vma->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
+	// If vma range is shared make it read only
+	if (!vma->isShared) {
+    if (vma->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
+    if (vma->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
+    if (!(vma->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
+	} else {
+	  page_flags |= PAGE_PRESENT;
+	}
 
 	page_flags |= PAGE_USER;
 
   // Change the protection of physical pages according to vma
 	protect_region(task->task_pml4, base, size, page_flags);
+	vma->page_addr = base; // Set this if mapped
 
 	return 0;
 }

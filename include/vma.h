@@ -34,6 +34,12 @@ struct vma {
 	/* The permission flags of the VMA. */
 	int vm_flags;
 
+	// Saves the real starting offset of the file
 	void *real_base;
+
+	// Used to determine if to be mapped area is shared
+	int isShared;
+
+	void * page_addr;
 };
 

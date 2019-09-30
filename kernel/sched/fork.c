@@ -98,7 +98,6 @@ struct task *task_clone(struct task *task)
 
   list_insert_after(&task->task_children, &clone->task_child);
 
-
   /* setup task */
 	clone->task_type = task->task_type;
 	/* copy register state */
@@ -113,6 +112,9 @@ struct task *task_clone(struct task *task)
 		/* add the vma to clone */
 		struct vma * exe_vma = add_executable_vma(clone, vma->vm_name, (void *)vma->vm_base,
 				(vma->vm_end - vma->vm_base), vma->vm_flags, vma->vm_src, vma->vm_len);
+		// Should we add this to function?
+		exe_vma->page_addr = vma->page_addr;
+
 		if(!exe_vma) panic("Can't add exe vma\n");
 
 	  if(strcmp(exe_vma->vm_name, "stack") == 0) {
@@ -122,9 +124,20 @@ struct task *task_clone(struct task *task)
 	        (void *)USTACK_TOP - PAGE_SIZE, NULL);
 	    cprintf("Copying stack to %p\n", page2kva(new_stack));
 	    memcpy(page2kva(new_stack), (void *)USTACK_TOP - PAGE_SIZE, PAGE_SIZE);
+
 	  } else {
+      vma->isShared = 1;
+      exe_vma->isShared = 1;
+
+	    // Increase refs if mapped
       increase_page_refs(clone->task_pml4, exe_vma->vm_base,
           exe_vma->vm_end - exe_vma->vm_base, 0);
+
+      // Change shared pages' protection to read only
+      protect_region(task->task_pml4, vma->vm_base,
+          vma->vm_end - vma->vm_base, PAGE_PRESENT | PAGE_NO_EXEC | PAGE_USER);
+      protect_region(clone->task_pml4, vma->vm_base,
+          vma->vm_end - vma->vm_base, PAGE_PRESENT | PAGE_NO_EXEC | PAGE_USER);
     }
 	}
 

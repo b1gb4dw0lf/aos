@@ -74,6 +74,7 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	new_vma->vm_base = ROUNDDOWN(addr, PAGE_SIZE);
 	new_vma->vm_end = ROUNDUP(addr + size, PAGE_SIZE);
 	new_vma->real_base = addr;
+	new_vma->isShared = 0;
 
   rb_node_init(&new_vma->vm_rb);
 
