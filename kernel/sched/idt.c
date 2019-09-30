@@ -130,6 +130,8 @@ void isr20();
 void isr21();
 /* Syscall */
 void isr128();
+/* irq */
+void isr32();
 
 /* Set up the interrupt handlers. */
 void idt_init(void)
@@ -160,6 +162,12 @@ void idt_init(void)
 	/* LAB 3: your code here. */
 	/* syscall */
 	set_idt_entry(&idtr.entries[INT_SYSCALL],				isr128, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);//TRAP
+
+	/* set IRQ handlers */
+	set_idt_entry(&idtr.entries[IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
+	/*set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_KBD],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
+	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SERIAL],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
+	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SPURIOUS],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);*/
 	load_idt(&idtr);
 }
 
