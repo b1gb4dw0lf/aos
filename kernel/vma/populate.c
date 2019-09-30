@@ -30,7 +30,7 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 	uint64_t page_flags = 0;
 
 	// If vma range is shared make it read only
-	if (!vma->isShared) {
+	if (!vma->is_shared) {
     if (vma->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
     if (vma->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
     if (!(vma->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
