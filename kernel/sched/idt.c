@@ -164,7 +164,11 @@ void idt_init(void)
 	set_idt_entry(&idtr.entries[INT_SYSCALL],				isr128, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);//TRAP
 
 	/* set IRQ handlers */
-	set_idt_entry(&idtr.entries[IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
+	for (int i = 0; i < 15; i++) {
+		set_idt_entry(&idtr.entries[IRQ_OFFSET + i], isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)),GDT_KCODE);
+	}
+//	set_idt_entry(&idtr.entries[IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
+//	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
 	/*set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_KBD],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
 	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SERIAL],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
 	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SPURIOUS],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);*/
@@ -186,6 +190,8 @@ void int_dispatch(struct int_frame *frame)
     case INT_PAGE_FAULT:
       page_fault_handler(frame);
 			return;
+		case IRQ_TIMER:
+			panic("IRQ TIMER CALL\n");
     case INT_SYSCALL:
 /*			 int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
           uint64_t a4, uint64_t a5, uint64_t a6)*/
