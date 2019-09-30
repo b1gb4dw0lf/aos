@@ -309,6 +309,7 @@ void task_create(uint8_t *binary, enum task_type type)
 	//panic("task_create not yet updated\n");
 	list_push(&runq, &task->task_node); //add process to run queue
 	list_init(&task->task_children);
+	list_init(&task->task_zombies);
 }
 
 /* Free the task and all of the memory that is used by it.
@@ -330,7 +331,27 @@ void task_free(struct task *task)
 	  task_free(child);
 	}*/
 
-	if (task == cur_task) {
+	if (task->task_ppid != 0 && task->task_status != TASK_DYING) {
+	  waiting = pid2task(task->task_ppid, 0);
+
+    // If the parent is waiting
+    if (waiting && waiting->task_status == TASK_NOT_RUNNABLE) {
+
+      if (waiting->task_wait) { 	// Wake up if designated process is being killed
+        if (waiting->task_wait->task_pid == task->task_pid) {
+          waiting->task_status = TASK_RUNNABLE;
+          list_insert_after(&runq, &waiting->task_node);
+          nuser_tasks++;
+        }
+      } else { 	// Or any of the processes gets killed
+        waiting->task_status = TASK_RUNNABLE;
+        list_insert_after(&runq, &waiting->task_node);
+        nuser_tasks++;
+      }
+	  }
+	}
+
+  if (task == cur_task) {
 		load_pml4((struct page_table *)PADDR(kernel_pml4));
 	}
 
@@ -356,8 +377,15 @@ void task_free(struct task *task)
   }
 
   /* Free the task. */
-  kfree(task);
+  if (task->task_ppid != 0
+    && (waiting = pid2task(task->task_ppid, 0)) != NULL
+    && waiting->task_status == TASK_NOT_RUNNABLE) {
 
+    list_insert_after(&waiting->task_zombies, &task->task_node);
+
+  } else {
+    kfree(task);
+  }
 }
 
 /* Frees the task. If the task is the currently running task, then this
@@ -365,16 +393,13 @@ void task_free(struct task *task)
  */
 void task_destroy(struct task *task)
 {
-	/* else return */
+  task_free(task);
 
-  cprintf("Destroyed the only task - nothing more to do!\n");
-
-  if (task->task_pid == cur_task->task_pid) {
-    task_free(task);
-	  sched_yield();
-	} else {
-    task_free(task);
+  if (list_is_empty(&runq) || nuser_tasks == 0) {
+    cprintf("Destroyed the only task - nothing more to do!\n");
   }
+
+  sched_yield();
 
   /* LAB 5: your code here. */
 }
@@ -431,7 +456,9 @@ void task_run(struct task *task)
   }
 
 	if (cur_task && cur_task->task_pid != task->task_pid) {
+	  cprintf("PID %d inserted\n", cur_task->task_pid);
 	  list_insert_after(&runq, &cur_task->task_node);
+	  nuser_tasks++;
   }
 
   cur_task = task;

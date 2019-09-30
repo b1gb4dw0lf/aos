@@ -25,17 +25,14 @@ void sched_yield(void)
 	struct list *node, *temp;
 	struct task *task, *temp_task;
 
-	cprintf("Called yield\n");
-
-	if(list_is_empty(&runq) && cur_task == NULL) {
-	  cprintf("Halt the cpu\n");
+	if((nuser_tasks == 0 || list_is_empty(&runq)) && cur_task == NULL) {
 		sched_halt();
-	} else if (list_is_empty(&runq) && cur_task) {
+	} else if ((nuser_tasks == 0 || list_is_empty(&runq)) && cur_task) {
     task_run(cur_task);
 	}else {
-		node = list_pop_left(&runq);
-		task = container_of(node, struct task, task_node);
-		cprintf("runing task with pid : %d\n", task->task_pid);
+    node = list_pop_left(&runq);
+    task = container_of(node, struct task, task_node);
+    nuser_tasks--;
 		task_run(task);
 	}
 	panic("sched_yield not yet implemented\n");
