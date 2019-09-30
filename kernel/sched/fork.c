@@ -133,11 +133,13 @@ struct task *task_clone(struct task *task)
       increase_page_refs(clone->task_pml4, exe_vma->vm_base,
           exe_vma->vm_end - exe_vma->vm_base, 0);
 
-      // Change shared pages' protection to read only
-      protect_region(task->task_pml4, vma->vm_base,
-          vma->vm_end - vma->vm_base, PAGE_PRESENT | PAGE_NO_EXEC | PAGE_USER);
-      protect_region(clone->task_pml4, vma->vm_base,
-          vma->vm_end - vma->vm_base, PAGE_PRESENT | PAGE_NO_EXEC | PAGE_USER);
+      if (vma->page_addr) {
+        // Change shared pages' protection to read only
+        protect_region(task->task_pml4, vma->vm_base,
+                       vma->vm_end - vma->vm_base, PAGE_PRESENT | PAGE_NO_EXEC | PAGE_USER);
+        protect_region(clone->task_pml4, vma->vm_base,
+                       vma->vm_end - vma->vm_base, PAGE_PRESENT | PAGE_NO_EXEC | PAGE_USER);
+      }
     }
 	}
 
