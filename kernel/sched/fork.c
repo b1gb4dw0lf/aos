@@ -11,8 +11,6 @@ extern struct list runq;
 extern struct task *task_alloc(pid_t ppid);
 #define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 
-void _binary_obj_user_thp_start();
-void _binary_obj_user_hello_start();
 
 static int get_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker *walker) {
   if ((*entry & PAGE_PRESENT)) {
@@ -171,6 +169,7 @@ pid_t sys_fork(void)
 	clone = task_clone(cur_task);
 	clone->task_frame.rax = 0;
 	cur_task->task_frame.rax = clone->task_pid;
+
 	return  clone->task_pid;
 }
 
@@ -184,7 +183,7 @@ int sys_exec(const char * file_name) {
   panic("Stop here\n");
 
   // Assume binary is valid
-  void * binary = NULL;
+  uintptr_t binary = lookup_binary(file_name);
 
   struct list *node, *next;
   struct vma * old_vma;
@@ -196,7 +195,7 @@ int sys_exec(const char * file_name) {
   }
 
   // Load new image into task
-  task_load_elf(cur_task, binary);
+  task_load_elf(cur_task, (uint8_t *)binary);
 
   // Remove task from runq
   list_remove(&cur_task->task_node);
@@ -205,4 +204,29 @@ int sys_exec(const char * file_name) {
   sched_yield();
   return 0;
 }
+
+/* define macros */
+#define PASTE3(x, y, z) x ## y ## z
+#define GETBINARY(name) PASTE3(_binary_obj_user_, name, _start)
+/* define user binary locations */
+void _binary_obj_user_badsegment_start();
+void _binary_obj_user_basicfork_start();
+void _binary_obj_user_breakpoint_start();
+void _binary_obj_user_cowfork_start();
+void _binary_obj_user_divzero_start();
+void _binary_obj_user_dontneed_start();
+void _binary_obj_user_hello_start();
+
+/* lookup function */
+uintptr_t lookup_binary(const char * file_name) {
+	if(strcmp(file_name, "badsegment") == 0) return (uintptr_t)GETBINARY(badsegment);
+	if(strcmp(file_name, "basicfork") == 0) return (uintptr_t)GETBINARY(basicfork);
+	if(strcmp(file_name, "breakpoint") == 0) return (uintptr_t)GETBINARY(breakpoint);
+	if(strcmp(file_name, "cowfork") == 0) return (uintptr_t)GETBINARY(cowfork);
+	if(strcmp(file_name, "divzero") == 0) return (uintptr_t)GETBINARY(divzero);
+	if(strcmp(file_name, "dontneed") == 0) return (uintptr_t)GETBINARY(dontneed);
+	if(strcmp(file_name, "hello") == 0) return (uintptr_t)GETBINARY(hello);
+	return 0x0;
+}
+
 
