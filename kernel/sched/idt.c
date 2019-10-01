@@ -11,6 +11,8 @@
 
 #include <kernel/sched/task.h>
 #include <kernel/vma.h>
+#include <kernel/acpi.h>
+#include <kernel/sched.h>
 
 static const char *int_names[256] = {
 	[INT_DIVIDE] = "Divide-by-Zero Error Exception (#DE)",
@@ -191,7 +193,8 @@ void int_dispatch(struct int_frame *frame)
       page_fault_handler(frame);
 			return;
 		case IRQ_TIMER:
-			panic("IRQ TIMER CALL\n");
+		  lapic_eoi();
+		  sched_yield();
     case INT_SYSCALL:
 /*			 int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
           uint64_t a4, uint64_t a5, uint64_t a6)*/
