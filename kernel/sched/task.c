@@ -218,7 +218,7 @@ struct task *task_alloc(pid_t ppid)
  *
  * Finally, this function maps one page for the program's initial stack.
  */
-static void task_load_elf(struct task *task, uint8_t *binary)
+void task_load_elf(struct task *task, uint8_t *binary)
 {
 	/* Hints:
 	 * - Load each program segment into virtual memory at the address
@@ -278,7 +278,7 @@ static void task_load_elf(struct task *task, uint8_t *binary)
     if ((flags & VM_READ) && !(flags & VM_WRITE) && !(flags & VM_EXEC)) name = ".rodata";
     if ((flags & VM_READ) && !(flags & VM_WRITE) && (flags & VM_EXEC)) name = ".text";
 
-    struct vma * exe_vma = add_executable_vma(task, name, (void *) ph->p_pa,
+    struct vma * exe_vma = add_executable_vma(task, name, (void *) ph->p_va,
         ph->p_memsz, flags, binary + ph->p_offset, ph->p_filesz);
 
     if (!exe_vma) panic("Can't add executable vma\n");

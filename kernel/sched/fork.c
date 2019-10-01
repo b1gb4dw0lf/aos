@@ -171,3 +171,35 @@ pid_t sys_fork(void)
 	return  clone->task_pid;
 }
 
+int sys_exec(const char * file_name) {
+
+  assert_user_mem(cur_task, (void *) file_name, 1, 0);
+
+  // Return if no binary
+  if (!file_name) return -1;
+
+  panic("Stop here\n");
+
+  // Assume binary is valid
+  void * binary = NULL;
+
+  struct list *node, *next;
+  struct vma * old_vma;
+
+  // Unmap all user things
+  list_foreach_safe(&cur_task->task_mmap, node, next) {
+    old_vma = container_of(node, struct vma, vm_mmap);
+    unmap_vma_range(cur_task, old_vma->vm_base, old_vma->vm_end - old_vma->vm_base);
+  }
+
+  // Load new image into task
+  task_load_elf(cur_task, binary);
+
+  // Remove task from runq
+  list_remove(&cur_task->task_node);
+  // If context switch will done this task will be saved to runq
+  // Otherwise, this same task will be called again
+  sched_yield();
+  return 0;
+}
+

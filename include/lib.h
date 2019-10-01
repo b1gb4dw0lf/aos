@@ -46,6 +46,7 @@ char *readline(const char *buf);
 
 /* syscall.c */
 void puts(const char *string, size_t len);
+int exec(const char *file_name);
 int getc(void);
 pid_t getpid(void);
 int kill(pid_t);
@@ -89,4 +90,3 @@ void sched_yield(void);
 pid_t wait(int *rstatus);
 pid_t waitpid(pid_t pid, int *rstatus, int opts);
 pid_t fork(void);
-
