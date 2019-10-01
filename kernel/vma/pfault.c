@@ -73,7 +73,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
 
     return 0;
   } else { // If the range is not mapped
-    cprintf("range not mapped\n");
+    cprintf("pfault : range not mapped\n");
     return populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
   }
 }
