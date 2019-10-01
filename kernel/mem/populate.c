@@ -29,7 +29,7 @@ static int populate_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	struct populate_info *info = walker->udata;
 
 	if(end - base >= (( 1 << BUDDY_2M_PAGE ) * PAGE_SIZE) - 1) {
-		page = page_alloc(ALLOC_HUGE & ALLOC_ZERO);
+		page = page_alloc(ALLOC_HUGE | ALLOC_ZERO);
 		page->pp_ref += 1;
 		assert(page->pp_ref == 1);
 		physaddr_t newAddr = page2pa(page) | info->flags | PAGE_PRESENT | PAGE_HUGE;

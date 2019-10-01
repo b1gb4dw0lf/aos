@@ -46,15 +46,11 @@ static int protect_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 {
 	struct protect_info *info = walker->udata;
 	if(*entry & PAGE_HUGE) { 
-		cprintf("huge page!\n");
 		if (end - base < (( 1 << BUDDY_2M_PAGE) * PAGE_SIZE) -PAGE_SIZE) {
-			cprintf("split, base %p, end %p\n", base, end);
 			return ptbl_split(entry, base, end, walker);
 		} else if((STRIP_ENTRY(*entry) | info->flags) == *entry) {
-			cprintf("flags equal, do nothing\n");
 			return 0;
 		} else {
-			cprintf("reset flags\n");
 			*entry = (STRIP_ENTRY(*entry) | info->flags);// remove flags by rounding down to page size? 
 			*entry = *entry | PAGE_HUGE;
 			tlb_invalidate(info->pml4, page2kva(pa2page(STRIP_ENTRY(*entry))));
