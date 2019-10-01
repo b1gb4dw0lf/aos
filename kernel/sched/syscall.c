@@ -72,7 +72,11 @@ static int sys_kill(pid_t pid)
 		return -1;
 	}
 
-	cprintf("[PID %5u] Exiting gracefully\n", task->task_pid);
+	if (pid == 0) {
+    cprintf("[PID %5u] Exiting gracefully\n", task->task_pid);
+	} else {
+    cprintf("[PID %5u] Reaping task with PID %u\n", cur_task->task_pid, task->task_pid);
+  }
 	task_destroy(task);
 
 	return 0;
