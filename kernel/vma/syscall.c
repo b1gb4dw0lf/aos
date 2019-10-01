@@ -117,6 +117,7 @@ void *sys_mmap(void *addr, size_t len, int prot, int flags, int fd,
 	}
 
 	if (flags > 0) return MAP_FAILED;
+	if (!addr && (valid_flags) & MAP_FIXED) return MAP_FAILED;
 
 	// More ugly checks, just scroll down.
 	int vma_flags = 0;
