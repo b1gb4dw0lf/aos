@@ -11,6 +11,9 @@ extern struct list runq;
 extern struct task *task_alloc(pid_t ppid);
 #define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 
+void _binary_obj_user_thp_start();
+void _binary_obj_user_hello_start();
+
 static int get_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker *walker) {
   if ((*entry & PAGE_PRESENT)) {
     struct page_info * page = pa2page(STRIP_ENTRY(*entry));
