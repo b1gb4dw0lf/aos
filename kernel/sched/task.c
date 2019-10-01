@@ -306,10 +306,27 @@ void task_create(uint8_t *binary, enum task_type type)
   if (task->task_type == TASK_TYPE_USER) nuser_tasks++;
 	/* LAB 3: your code here. */
 	/* LAB 5: your code here. */
-	//panic("task_create not yet updated\n");
-	list_push(&runq, &task->task_node); //add process to run queue
-	list_init(&task->task_children);
-	list_init(&task->task_zombies);
+  list_init(&task->task_children);
+  list_init(&task->task_zombies);
+	list_insert_after(&runq, &task->task_node); //add process to run queue
+}
+
+void handle_waiting(struct task *parent, struct task *child) {
+
+  if ((parent->task_wait && parent->task_wait->task_pid == child->task_pid)
+      || !parent->task_wait) {
+
+    pid_t return_val = child->task_pid;
+    child->task_status = TASK_DYING;
+    task_free(child);
+    parent->task_status = TASK_RUNNABLE;
+    parent->task_frame.rax = return_val;
+
+    list_insert_after(&runq, &parent->task_node);
+
+    sched_yield();
+  }
+
 }
 
 /* Free the task and all of the memory that is used by it.
@@ -323,33 +340,44 @@ void task_free(struct task *task)
 	 * before freeing the page tables, just in case the page gets re-used.
 	 */
 
-	/*
-	cprintf("Freeing children\n");
-	struct list * node, * next;
-	list_foreach_safe(&task->task_children, node, next) {
-	  struct task * child = container_of(node, struct task, task_child);
-	  task_free(child);
-	}*/
+  if (task->task_ppid != 0 && task->task_status != TASK_DYING) {
+    waiting = pid2task(task->task_ppid, 0);
 
-	if (task->task_ppid != 0 && task->task_status != TASK_DYING) {
-	  waiting = pid2task(task->task_ppid, 0);
+    if (waiting->task_status == TASK_NOT_RUNNABLE) {
+      handle_waiting(waiting, task);
+    }
 
-    // If the parent is waiting
-    if (waiting && waiting->task_status == TASK_NOT_RUNNABLE) {
+    // Handle parent running and child terminated
+    list_remove(&task->task_node);
+    task->task_status = TASK_DYING;
+    list_insert_after(&waiting->task_zombies, &task->task_node);
 
-      if (waiting->task_wait) { 	// Wake up if designated process is being killed
-        if (waiting->task_wait->task_pid == task->task_pid) {
-          waiting->task_status = TASK_RUNNABLE;
-          list_insert_after(&runq, &waiting->task_node);
-          nuser_tasks++;
-        }
-      } else { 	// Or any of the processes gets killed
-        waiting->task_status = TASK_RUNNABLE;
-        list_insert_after(&runq, &waiting->task_node);
-        nuser_tasks++;
+    if (task->task_pid == cur_task->task_pid) {
+      cur_task = NULL;
+    }
+
+    sched_yield();
+  }
+
+  if (task->task_ppid == 0) {
+    struct list *node, *next;
+    struct task *item;
+    // Remove zombies
+    if (!list_is_empty(&task->task_zombies)) {
+      list_foreach_safe(&task->task_zombies, node, next) {
+        item = container_of(node, struct task, task_node);
+        task_free(item);
       }
-	  }
-	}
+    }
+
+    // Detach children
+    if (!list_is_empty(&task->task_children)) {
+      list_foreach_safe(&task->task_children, node, next) {
+        item = container_of(node, struct task, task_child);
+        item->task_ppid = 0;
+      }
+    }
+  }
 
   if (task == cur_task) {
 		load_pml4((struct page_table *)PADDR(kernel_pml4));
@@ -367,6 +395,7 @@ void task_free(struct task *task)
   nuser_tasks--;
   list_remove(&task->task_node);
 
+  if (task->task_ppid != 0) list_remove(&task->task_child);
 
   /* Note the task's demise. */
   cprintf("[PID %5u] Freed task with PID %d\n", cur_task ? cur_task->task_pid : 0,
@@ -377,15 +406,7 @@ void task_free(struct task *task)
   }
 
   /* Free the task. */
-  if (task->task_ppid != 0
-    && (waiting = pid2task(task->task_ppid, 0)) != NULL
-    && waiting->task_status == TASK_NOT_RUNNABLE) {
-
-    list_insert_after(&waiting->task_zombies, &task->task_node);
-
-  } else {
-    kfree(task);
-  }
+  kfree(task);
 }
 
 /* Frees the task. If the task is the currently running task, then this
@@ -395,7 +416,7 @@ void task_destroy(struct task *task)
 {
   task_free(task);
 
-  if (list_is_empty(&runq) || nuser_tasks == 0) {
+  if (list_is_empty(&runq)) {
     cprintf("Destroyed the only task - nothing more to do!\n");
   }
 

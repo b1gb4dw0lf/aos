@@ -94,7 +94,7 @@ struct task *task_clone(struct task *task)
 	rb_init(&clone->task_rb);
   list_init(&clone->task_mmap);
   list_init(&clone->task_children);
-  list_init(&clone->task_node);
+  list_init(&clone->task_zombies);
 
   list_insert_after(&task->task_children, &clone->task_child);
 
@@ -149,7 +149,7 @@ struct task *task_clone(struct task *task)
 	}
 
 	/* add process to runqueue */
-  list_push(&runq, &clone->task_node);
+  list_insert_after(&runq, &clone->task_node);
 
 	cprintf("Clone DONE\n");
 
