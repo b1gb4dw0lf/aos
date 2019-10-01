@@ -359,23 +359,21 @@ void task_free(struct task *task)
     sched_yield();
   }
 
-  if (task->task_ppid == 0) {
-    struct list *node, *next;
-    struct task *item;
-    // Remove zombies
-    if (!list_is_empty(&task->task_zombies)) {
-      list_foreach_safe(&task->task_zombies, node, next) {
-        item = container_of(node, struct task, task_node);
-        task_free(item);
-      }
+  struct list *node, *next;
+  struct task *item;
+  // Remove zombies
+  if (!list_is_empty(&task->task_zombies)) {
+    list_foreach_safe(&task->task_zombies, node, next) {
+      item = container_of(node, struct task, task_node);
+      task_free(item);
     }
+  }
 
-    // Detach children
-    if (!list_is_empty(&task->task_children)) {
-      list_foreach_safe(&task->task_children, node, next) {
-        item = container_of(node, struct task, task_child);
-        item->task_ppid = 0;
-      }
+  // Detach children
+  if (!list_is_empty(&task->task_children)) {
+    list_foreach_safe(&task->task_children, node, next) {
+      item = container_of(node, struct task, task_child);
+      item->task_ppid = 0;
     }
   }
 

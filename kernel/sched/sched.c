@@ -35,7 +35,6 @@ void sched_yield(void)
     nuser_tasks--;
 		task_run(task);
 	}
-	panic("sched_yield not yet implemented\n");
 }
 
 /* For now jump into the kernel monitor. */

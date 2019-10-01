@@ -38,6 +38,14 @@ void increase_page_refs(struct page_table *pml4, void *va, size_t size,
   walk_page_range(pml4, va, (void *)((uintptr_t)va + size), &walker);
 }
 
+/**
+ * This is just a deep copy that creates private ptables for all 4 levels
+ * The leaves will point to same physical pages, only the tables will be
+ * private to the process.
+ *
+ * @param src
+ * @param dst
+ */
 void copy_deep_ptables(struct page_table * src, struct page_table * dst) {
   // For every pml4 entry
   for (int i = 0; i < 512; ++i) {
@@ -103,10 +111,10 @@ struct task *task_clone(struct task *task)
 	/* copy register state */
 	memcpy(&clone->task_frame, &task->task_frame, sizeof(task->task_frame));
 
-  /* copy page tables TODO*/
+  /* copy page tables */
   copy_deep_ptables(task->task_pml4, clone->task_pml4);
 
-  /* copy VMAs TODO*/
+  /* copy VMAs */
 	list_foreach(&task->task_mmap, node) {
 		vma = container_of(node, struct vma, vm_mmap);
 		/* add the vma to clone */
@@ -125,7 +133,6 @@ struct task *task_clone(struct task *task)
 	    struct page_info * new_stack = page_lookup(clone->task_pml4,
 	        (void *)USTACK_TOP - PAGE_SIZE, NULL);
 
-	    cprintf("Copying stack to %p\n", page2kva(new_stack));
 	    // Copy to clone's stack vaddr from parent task's stack
 	    memcpy(page2kva(new_stack), (void *)USTACK_TOP - PAGE_SIZE, PAGE_SIZE);
 
@@ -151,8 +158,6 @@ struct task *task_clone(struct task *task)
 	/* add process to runqueue */
   list_insert_after(&runq, &clone->task_node);
 
-	cprintf("Clone DONE\n");
-
 	return clone;
 }
 
@@ -163,7 +168,6 @@ pid_t sys_fork(void)
 	clone = task_clone(cur_task);
 	clone->task_frame.rax = 0;
 	cur_task->task_frame.rax = clone->task_pid;
-	cprintf("Fork DONE\n");
 	return  clone->task_pid;
 }
 
