@@ -192,8 +192,9 @@ struct task *task_alloc(pid_t ppid)
 	task->task_frame.cs = GDT_UCODE | 3;
 
 	/* You will set task->task_frame.rip later. */
+  task->task_frame.rflags |= FLAGS_IF;
 
-	cprintf("[PID %5u] New task with PID %u\n",
+  cprintf("[PID %5u] New task with PID %u\n",
 	        cur_task ? cur_task->task_pid : 0, task->task_pid);
 
 	return task;
