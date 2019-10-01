@@ -84,6 +84,10 @@ void sched_yield(void)
 	syscall(SYS_yield, 0, 0, 0, 0, 0, 0, 0);
 }
 
+int exec(const char * file_name) {
+	return syscall(SYS_exec, 0, (uintptr_t)file_name, 0, 0, 0, 0, 0);
+}
+
 pid_t wait(int *rstatus)
 {
 	return syscall(SYS_wait, 0, (uint64_t)rstatus, 0, 0, 0, 0, 0);

@@ -180,8 +180,6 @@ int sys_exec(const char * file_name) {
   // Return if no binary
   if (!file_name) return -1;
 
-  panic("Stop here\n");
-
   // Assume binary is valid
   uintptr_t binary = lookup_binary(file_name);
 
