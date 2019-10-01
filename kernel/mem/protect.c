@@ -47,7 +47,7 @@ static int protect_pde(physaddr_t *entry, uintptr_t base, uintptr_t end,
 	struct protect_info *info = walker->udata;
 	if(*entry & PAGE_HUGE) { 
 		cprintf("huge page!\n");
-		if (!((end - base) >= ((( 1 << BUDDY_2M_PAGE) * PAGE_SIZE) - 1))) {
+		if (end - base >= (( 1 << BUDDY_2M_PAGE) * PAGE_SIZE) -1) {
 			cprintf("split, base %p, end %p\n", base, end);
 			return ptbl_split(entry, base, end, walker);
 		} else if((STRIP_ENTRY(*entry) | info->flags) == *entry) {
