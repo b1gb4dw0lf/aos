@@ -5,6 +5,7 @@
 #include <x86-64/gdt.h>
 #include <x86-64/idt.h>
 
+#include <kernel/acpi.h>
 #include <kernel/sched/idt.h>
 #include <kernel/monitor.h>
 #include <kernel/sched/syscall.h>
@@ -175,6 +176,11 @@ void idt_init(void)
 	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SERIAL],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
 	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SPURIOUS],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);*/
 	load_idt(&idtr);
+}
+
+void idt_init_mp(void)
+{
+	/* LAB 6: your code here. */
 }
 
 void int_dispatch(struct int_frame *frame)

@@ -1,10 +1,12 @@
 #include <error.h>
 #include <string.h>
 #include <assert.h>
+#include <cpu.h>
 
 #include <x86-64/asm.h>
 #include <x86-64/gdt.h>
 
+#include <kernel/acpi.h>
 #include <kernel/console.h>
 #include <kernel/mem.h>
 #include <kernel/sched.h>
@@ -26,6 +28,11 @@ void syscall_init(void)
 	write_msr(MSR_KERNEL_GS_BASE, (uintptr_t) this_cpu);
 
 	/* LAB 3: your code here. */
+}
+
+void syscall_init_mp(void)
+{
+	/* LAB 6: your code here. */
 }
 
 /*
