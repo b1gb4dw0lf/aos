@@ -7,6 +7,7 @@
 
 #include <kernel/mem.h>
 #include <kernel/tests.h>
+#include <cpu.h>
 
 extern struct list page_free_list[];
 
@@ -147,6 +148,26 @@ void mem_init_mp(void)
 	/* Set up kernel stacks for each CPU here. Make sure they have a guard
 	 * page.
 	 */
+
+  // Bootstrap core's stack is at KSTACK_TOP  - KSTACK_SIZE
+  //1 Core 0 - TOP - KSIZE
+  //2 Guard  - TOP - KSIZE - PAGE
+  //3 Core 1 - TOP - 2 KSIZE - PAGE
+  //4 Guard  - TOP - 2 KSIZE - 2 PAGE
+  //5 Core 2 - TOP - 3 KSIZE - 2 PAGE
+  //6 Guard  - TOP - 3 KSIZE - 3 PAGE
+
+  populate_region(kernel_pml4, (void *)(KSTACK_TOP - KSTACK_SIZE - PAGE_SIZE),
+                  KSTACK_SIZE, PAGE_PRESENT | PAGE_NO_EXEC);
+
+  for (int i = 2; i < NCPUS + 1; ++i) {
+    populate_region(kernel_pml4, (void *)(KSTACK_TOP - (i * KSTACK_SIZE) - (i-1) * PAGE_SIZE),
+        KSTACK_SIZE, PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+
+    populate_region(kernel_pml4, (void *)(KSTACK_TOP - (i * (KSTACK_SIZE + PAGE_SIZE))),
+                   PAGE_SIZE, PAGE_PRESENT | PAGE_NO_EXEC);
+  }
+
 	/* LAB 6: your code here. */
 }
 
