@@ -209,11 +209,14 @@ struct task *task_alloc(pid_t ppid)
  * @return struct task *
  */
 struct task * task_alloc_kernel(pid_t ppid) {
+  // Should kernel threads need a deep copy?
+  // Otherwise we still need a stack?
+  // Maybe we can change it to copy of pml4 and other tables shared?
+  // Let's go with this now
   struct task * task = task_alloc(ppid);
 
   // Set the task type
   task->task_type = TASK_TYPE_KERNEL;
-
   // Set the ring level to 0 in regs
   task->task_frame.ds = GDT_UDATA | 0;
   task->task_frame.ss = GDT_UDATA | 0;
@@ -222,7 +225,32 @@ struct task * task_alloc_kernel(pid_t ppid) {
   // Since this is a kernel thread?
   task->task_frame.rsp = KSTACK_TOP;
 
+
+  cprintf("[PID %5u] New task with PID %u\n",
+          cur_task ? cur_task->task_pid : 0, task->task_pid);
+
   return task;
+}
+
+void task_create_kernel(int (*fn)(void*), void *arg, uint64_t flags) {
+  struct task * kernel_task = task_alloc_kernel(0);
+
+  rb_init(&kernel_task->task_rb); // Do we need this?
+  list_init(&kernel_task->task_mmap);
+  list_init(&kernel_task->task_children);
+  list_init(&kernel_task->task_zombies);
+
+  // Since all binaries are mapped in kernel image we are safe to call
+  // Also, the kernel does not use vmas, therefore we are also safe to make syscall
+  kernel_task->task_frame.rip = (uintptr_t) fn;
+
+  // Need to add a new stack tho? We don't want stack to be shared when the user
+  // traps into the kernel
+  struct page_info * kernel_stack = page_alloc(ALLOC_ZERO);
+  page_insert(kernel_task->task_pml4, kernel_stack, (void *) KSTACK_TOP - PAGE_SIZE,
+      PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+
+  list_insert_after(&runq, &kernel_task->task_node); //add process to run queue
 }
 
 /* Sets up the initial program binary, stack and processor flags for a user
