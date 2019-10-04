@@ -201,6 +201,30 @@ struct task *task_alloc(pid_t ppid)
 	return task;
 }
 
+/**
+ * Creates and returns a kernel task in ring 0
+ * The caller should also set the RIP of the task
+ *
+ * @param ppid parent pid
+ * @return struct task *
+ */
+struct task * task_alloc_kernel(pid_t ppid) {
+  struct task * task = task_alloc(ppid);
+
+  // Set the task type
+  task->task_type = TASK_TYPE_KERNEL;
+
+  // Set the ring level to 0 in regs
+  task->task_frame.ds = GDT_UDATA | 0;
+  task->task_frame.ss = GDT_UDATA | 0;
+  task->task_frame.cs = GDT_UCODE | 0;
+
+  // Since this is a kernel thread?
+  task->task_frame.rsp = KSTACK_TOP;
+
+  return task;
+}
+
 /* Sets up the initial program binary, stack and processor flags for a user
  * process.
  * This function is ONLY called during kernel initialization, before running
