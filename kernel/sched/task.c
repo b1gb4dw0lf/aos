@@ -244,8 +244,9 @@ void task_create_kernel(int (*fn)(void*), void *arg, uint64_t flags) {
   // Also, the kernel does not use vmas, therefore we are also safe to make syscall
   kernel_task->task_frame.rip = (uintptr_t) fn;
 
-  // Need to add a new stack tho? We don't want stack to be shared when the user
-  // traps into the kernel
+  // TODO: Think about this
+  // We don't want stack to be shared when the user
+  // traps into the kernel, or should we just use that core's stack?
   struct page_info * kernel_stack = page_alloc(ALLOC_ZERO);
   page_insert(kernel_task->task_pml4, kernel_stack, (void *) KSTACK_TOP - PAGE_SIZE,
       PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
