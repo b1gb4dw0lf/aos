@@ -24,6 +24,26 @@ int kmem_init(void)
 
 int kmem_init_mp(void)
 {
+	/* assume first cpu is already setup? */
+	struct slab *slab;
+	size_t obj_size;
+	size_t i;
+	struct cpuinfo cpu;
+	struct kmem_cache cache;
+
+	/* loop through all cpus to assign kmem cache */
+	for (int i = 0 ; i < NCPUS ; ++i) {
+		/* get cpuinfo struct */
+		cpu = cpus[i];
+		/* go through the per-cpu slab allocator */
+		cache = cpu.kmem;
+		/* allocate all slabs and update nslabs */
+		for(int j = 0; j < cache._nslabs; ++j) {
+			slab = cache._slabs + j;
+			obj_size = (i + 1) * SLAB_ALIGN;
+			slab_setup(slab, obj_size);
+		}
+	}
 	/* LAB 6: your code here. */
 	return 0;
 }
