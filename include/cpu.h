@@ -16,6 +16,7 @@
 #include <x86-64/memory.h>
 
 #include <kernel/mem/slab.h>
+#include <kernel/acpi/lapic.h>
 
 /* Values of status in struct cpuinfo */
 enum {
