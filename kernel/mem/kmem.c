@@ -37,7 +37,7 @@ int kmem_init_mp(void)
 		cpu = cpus[i];
 		/* go through the per-cpu slab allocator */
 		cache = cpu.kmem;
-		/* allocate all slabs and update nslabs */
+		/* allocate all slabs */
 		for(int j = 0; j < cache._nslabs; ++j) {
 			slab = cache._slabs + j;
 			obj_size = (i + 1) * SLAB_ALIGN;
