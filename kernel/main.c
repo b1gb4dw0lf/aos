@@ -49,6 +49,8 @@ void kmain(struct boot_info *boot_info)
 	lapic_init();
 	hpet_init(rsdp);
 
+	spin_init(&BIG_KERNEL_LOCK, "BIG_KERNEL_LOCK");
+
   /* Set up the tasks. */
 	task_init();
 	sched_init();

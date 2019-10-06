@@ -59,4 +59,6 @@ extern struct cpuinfo *boot_cpu;
 #define this_cpu (cpus + lapic_cpunum())
 extern size_t ncpus;
 
+struct spinlock BIG_KERNEL_LOCK;
+
 #endif /* !defined(__ASSEMBLER__) */

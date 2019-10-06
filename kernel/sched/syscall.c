@@ -101,7 +101,8 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 
 	switch (syscallno) {
 		case SYS_cputs:
-			sys_cputs((char *)a1, (int64_t)a2);			
+			sys_cputs((char *)a1, (int64_t)a2);
+      return 0;
 		case SYS_cgetc:
 			return sys_cgetc();
 		case SYS_getpid:

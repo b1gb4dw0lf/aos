@@ -34,6 +34,12 @@ void sched_init_mp(void)
 	this_cpu->runq_len = 0;
 }
 
+void sched_release_lock(void) {
+  if (holding(&BIG_KERNEL_LOCK)) {
+    spin_unlock(&BIG_KERNEL_LOCK);
+  }
+}
+
 /* Runs the next runnable task. */
 void sched_yield(void)
 {
@@ -41,14 +47,17 @@ void sched_yield(void)
 	struct list *node, *temp;
 	struct task *task, *temp_task;
 
-	if(list_is_empty(&runq) && cur_task == NULL) {
-		sched_halt();
+  if(list_is_empty(&runq) && cur_task == NULL) {
+    sched_release_lock();
+    sched_halt();
 	} else if (list_is_empty(&runq) && cur_task) {
+	  sched_release_lock();
     task_run(cur_task);
 	}else {
     node = list_pop_left(&runq);
     task = container_of(node, struct task, task_node);
     nuser_tasks--;
+    sched_release_lock();
 		task_run(task);
 	}
 }

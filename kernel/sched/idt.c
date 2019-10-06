@@ -188,6 +188,7 @@ void int_dispatch(struct int_frame *frame)
 	 *  - Dispatch system calls to syscall().
 	 */
 	/* LAB 3: your code here. */
+
 	switch (frame->int_no) {
     case INT_BREAK:
       monitor(frame);
@@ -198,6 +199,7 @@ void int_dispatch(struct int_frame *frame)
 		case IRQ_TIMER:
 		  lapic_eoi();
 		  sched_yield();
+		  return;
     case INT_SYSCALL:
 			frame->rax = (uint64_t)syscall(frame->rdi, frame->rsi, frame->rdx, frame->rcx, frame->r8, frame->r9, frame->rbp); //frame->rbp = 7th
 			return;
@@ -228,6 +230,9 @@ void int_handler(struct int_frame *frame)
 	assert(!(read_rflags() & FLAGS_IF));
 
 	if ((frame->cs & 3) == 3) {
+
+	  spin_lock(&BIG_KERNEL_LOCK);
+
 		/* Interrupt from user mode. */
 		assert(cur_task);
 
@@ -243,7 +248,12 @@ void int_handler(struct int_frame *frame)
 	/* Dispatch based on the type of interrupt that occurred. */
 	int_dispatch(frame);
 
-	/* Return to the current task, which should be running. */
+
+  if ((frame->cs & 3) == 3) {
+    spin_unlock(&BIG_KERNEL_LOCK);
+  }
+
+  /* Return to the current task, which should be running. */
 	task_run(cur_task);
 }
 
@@ -267,7 +277,7 @@ void page_fault_handler(struct int_frame *frame)
 	 */
 
 	if (task_page_fault_handler(cur_task, fault_va, perm) == 0) {
-	  task_run(cur_task);
+	  return;
 	}
 
 	/* Destroy the task that caused the fault. */

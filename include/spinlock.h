@@ -25,6 +25,7 @@ struct spinlock {
 #define spin_unlock(lock) __spin_unlock(lock, __FILE__, __LINE__)
 
 void spin_init(struct spinlock *lock, const char *name);
+int holding(struct spinlock *lock);
 void __spin_lock(struct spinlock *lock, const char *file, int line);
 int __spin_trylock(struct spinlock *lock, const char *file, int line);
 void __spin_unlock(struct spinlock *lock, const char *file, int line);
