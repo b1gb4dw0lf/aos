@@ -38,14 +38,11 @@ int pml4_setup(struct boot_info *boot_info)
 	 * stack. The kernel stack grows down from virtual address KSTACK_TOP.
 	 * Map 'bootstack' to [KSTACK_TOP - KSTACK_SIZE, KSTACK_TOP).
 	 */
-	/*boot_map_region(kernel_pml4,
+	boot_map_region(kernel_pml4,
 	    (void *)(KSTACK_TOP - KSTACK_SIZE),
 	    KSTACK_SIZE,
 	    (physaddr_t) bootstack,
-	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);*/
-
-	mem_init_mp();
-
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
   /* Map in the pages from the buddy allocator as RW-. */
   boot_map_region(kernel_pml4,
@@ -133,6 +130,7 @@ void mem_init(struct boot_info *boot_info)
 	lab2_check_pml4();
 
 	/* Load the kernel PML4. */
+	cprintf("Kernel PML4 @ %p\n", PADDR(kernel_pml4));
 	load_pml4((void *) PADDR(kernel_pml4));
 
 	/* Check the paging functions. */
@@ -140,10 +138,11 @@ void mem_init(struct boot_info *boot_info)
 
 	/* Add the rest of the physical memory to the buddy allocator. */
 	page_init_ext(boot_info);
-	dump_page_tables(kernel_pml4, PAGE_HUGE);
 
 	/* Check the buddy allocator. */
-	//lab2_check_buddy(boot_info);
+	lab2_check_buddy(boot_info);
+
+  mem_init_mp();
 }
 
 void mem_init_mp(void)
@@ -152,10 +151,13 @@ void mem_init_mp(void)
 	 * page.
 	 */
 
-  for (int i = 1; i < NCPUS; ++i) {
-    boot_map_region(kernel_pml4, (void*) KSTACK_TOP - i * KSTACK_SIZE - (i-1) * PAGE_SIZE,
-        KSTACK_SIZE, (physaddr_t) bootstack - i * KSTACK_SIZE,
+	// TODO: We need to clarify this
+	void * va;
+  for (int i = 0; i < NCPUS; ++i) {
+    va = (void*) KSTACK_TOP - i * (KSTACK_SIZE + PAGE_SIZE);
+    populate_region(kernel_pml4, va - KSTACK_SIZE, KSTACK_SIZE,
         PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+    cpus[i].cpu_tss.rsp[0] = (physaddr_t) va;
   }
 
 	/* LAB 6: your code here. */
