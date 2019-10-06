@@ -51,13 +51,11 @@ void sched_yield(void)
     sched_release_lock();
     sched_halt();
 	} else if (list_is_empty(&runq) && cur_task) {
-	  sched_release_lock();
     task_run(cur_task);
 	}else {
     node = list_pop_left(&runq);
     task = container_of(node, struct task, task_node);
     nuser_tasks--;
-    sched_release_lock();
 		task_run(task);
 	}
 }

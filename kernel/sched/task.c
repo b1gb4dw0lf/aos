@@ -530,7 +530,6 @@ void task_run(struct task *task)
   }
 
 	if (cur_task && cur_task->task_pid != task->task_pid) {
-	  cprintf("PID %d inserted\n", cur_task->task_pid);
 	  list_insert_after(&runq, &cur_task->task_node);
 	  nuser_tasks++;
   }
@@ -539,6 +538,11 @@ void task_run(struct task *task)
   cur_task->task_status = TASK_RUNNING;
   cur_task->task_runs++;
   load_pml4((struct page_table *) PADDR(task->task_pml4));
+
+  if (holding(&BIG_KERNEL_LOCK)) {
+    spin_unlock(&BIG_KERNEL_LOCK);
+  }
+
   task_pop_frame(&task->task_frame);
 
 	/* LAB 3: Your code here. */
