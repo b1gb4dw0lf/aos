@@ -39,9 +39,10 @@ void gdt_init_mp(void)
   void * va = (void*) KSTACK_TOP - i * (KSTACK_SIZE + PAGE_SIZE);
   this_cpu->cpu_tss.rsp[0] = (uintptr_t) va;
 
-  set_tss_entry((struct tss_entry *)(gdt_entries + (GDT_TSS0 >> 3) + (i-1)),
-                &this_cpu->cpu_tss);
+  uint16_t gdt_index = (GDT_TSS0 + i) >> 3;
+
+  set_tss_entry((struct tss_entry *)(gdt_entries + gdt_index),&this_cpu->cpu_tss);
   load_gdt(&gdtr, GDT_KCODE, GDT_KDATA);
-  load_task_sel(GDT_TSS0 + (i - 1));
+  load_task_sel(GDT_TSS0 + i);
 }
 
