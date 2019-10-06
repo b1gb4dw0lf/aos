@@ -40,7 +40,7 @@ void kmain(struct boot_info *boot_info)
 	mem_init(boot_info);
 
 	/* Set up the slab allocator. */
-	kmem_init_mp();
+	kmem_init();
 
 	/* Set up the interrupt controller and timers */
 	pic_init();

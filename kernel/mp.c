@@ -56,6 +56,7 @@ void mp_main(void)
 	/* Initialize the local APIC. */
 	/* Set up segmentation, interrupts, system call support. */
 	/* Set up the per-CPU slab allocator. */
+	kmem_init_mp();
 	/* Set up the per-CPU scheduler. */
 
 	/* Notify the main CPU that we started up. */

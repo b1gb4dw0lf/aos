@@ -58,7 +58,7 @@ int kmem_init_mp(void)
 void *kmalloc(size_t size)
 {
 	/* Should deal with per-cpu structs */
-	struct kmem_cache cache = this_cpu->kmem;
+//	struct kmem_cache cache = this_cpu->kmem;
 	size_t index;
 
 	if (size == 0) {
@@ -68,11 +68,13 @@ void *kmalloc(size_t size)
 	size = ROUNDUP(size, SLAB_ALIGN);
 	index = (size / SLAB_ALIGN) - 1;
 
-	if (index >= cache._nslabs) {
+	//if (index >= cache._nslabs) {
+	if (index >= nslabs) {
 		return NULL;
 	}
 
-	return slab_alloc(cache._slabs + index);
+	//return slab_alloc(cache._slabs + index);
+	return slab_alloc(slabs + index);
 }
 
 /* This function calls slab_free() to free the chunk of memory. */
