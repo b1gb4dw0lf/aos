@@ -32,7 +32,6 @@ void sched_init_mp(void)
 	/* LAB 6: your code here. */
 	list_init(&this_cpu->runq);
 	this_cpu->runq_len = 0;
-	runq = this_cpu->runq;
 }
 
 /* Runs the next runnable task. */

@@ -170,11 +170,7 @@ void idt_init(void)
 	for (int i = 0; i < 15; i++) {
 		set_idt_entry(&idtr.entries[IRQ_OFFSET + i], isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)),GDT_KCODE);
 	}
-//	set_idt_entry(&idtr.entries[IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
-//	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
-	/*set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_KBD],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
-	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SERIAL],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
-	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SPURIOUS],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);*/
+
 	load_idt(&idtr);
 }
 

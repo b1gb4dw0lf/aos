@@ -49,12 +49,11 @@ void kmain(struct boot_info *boot_info)
 	lapic_init();
 	hpet_init(rsdp);
 
-  boot_cpus();
-
   /* Set up the tasks. */
 	task_init();
 	sched_init();
 
+  boot_cpus();
 
 #if defined(TEST)
 	TASK_CREATE(TEST, TASK_TYPE_USER);

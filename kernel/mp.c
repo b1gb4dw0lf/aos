@@ -86,10 +86,6 @@ void mp_main(void)
 	cprintf("Notified creator\n");
 
 	/* Schedule tasks. */
-	/* LAB 6: remove this code when you are ready */
-	asm volatile(
-		"cli\n"
-		"hlt\n");
 	sched_yield();
 }
 
