@@ -13,6 +13,7 @@ int kmem_init(void)
 	size_t obj_size;
 	size_t i;
 
+	nslabs = 32;
 	for (i = 0; i < nslabs; ++i) {
 		slab = slabs + i;
 		obj_size = (i + 1) * SLAB_ALIGN;
@@ -30,6 +31,8 @@ int kmem_init_mp(void)
 	size_t i;
 	struct cpuinfo cpu;
 	struct kmem_cache cache;
+
+	cache._nslabs = 32;
 
 	/* loop through all cpus to assign kmem cache */
 	for (int i = 0 ; i < NCPUS ; ++i) {

@@ -13,6 +13,7 @@ extern struct list page_free_list[];
 
 /* The kernel's initial PML4. */
 struct page_table *kernel_pml4;
+void mem_init_mp(void);
 
 /* This function sets up the initial PML4 for the kernel. */
 int pml4_setup(struct boot_info *boot_info)
@@ -37,11 +38,13 @@ int pml4_setup(struct boot_info *boot_info)
 	 * stack. The kernel stack grows down from virtual address KSTACK_TOP.
 	 * Map 'bootstack' to [KSTACK_TOP - KSTACK_SIZE, KSTACK_TOP).
 	 */
-	boot_map_region(kernel_pml4,
+	/*boot_map_region(kernel_pml4,
 	    (void *)(KSTACK_TOP - KSTACK_SIZE),
 	    KSTACK_SIZE,
 	    (physaddr_t) bootstack,
-	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);*/
+
+	mem_init_mp();
 
 
   /* Map in the pages from the buddy allocator as RW-. */
@@ -140,7 +143,7 @@ void mem_init(struct boot_info *boot_info)
 	dump_page_tables(kernel_pml4, PAGE_HUGE);
 
 	/* Check the buddy allocator. */
-	lab2_check_buddy(boot_info);
+	//lab2_check_buddy(boot_info);
 }
 
 void mem_init_mp(void)
@@ -149,23 +152,10 @@ void mem_init_mp(void)
 	 * page.
 	 */
 
-  // Bootstrap core's stack is at KSTACK_TOP  - KSTACK_SIZE
-  //1 Core 0 - TOP - KSIZE
-  //2 Guard  - TOP - KSIZE - PAGE
-  //3 Core 1 - TOP - 2 KSIZE - PAGE
-  //4 Guard  - TOP - 2 KSIZE - 2 PAGE
-  //5 Core 2 - TOP - 3 KSIZE - 2 PAGE
-  //6 Guard  - TOP - 3 KSIZE - 3 PAGE
-
-  populate_region(kernel_pml4, (void *)(KSTACK_TOP - KSTACK_SIZE - PAGE_SIZE),
-                  KSTACK_SIZE, PAGE_PRESENT | PAGE_NO_EXEC);
-
-  for (int i = 2; i < NCPUS + 1; ++i) {
-    populate_region(kernel_pml4, (void *)(KSTACK_TOP - (i * KSTACK_SIZE) - (i-1) * PAGE_SIZE),
-        KSTACK_SIZE, PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
-
-    populate_region(kernel_pml4, (void *)(KSTACK_TOP - (i * (KSTACK_SIZE + PAGE_SIZE))),
-                   PAGE_SIZE, PAGE_PRESENT | PAGE_NO_EXEC);
+  for (int i = 1; i < NCPUS; ++i) {
+    boot_map_region(kernel_pml4, (void*) KSTACK_TOP - i * KSTACK_SIZE - (i-1) * PAGE_SIZE,
+        KSTACK_SIZE, (physaddr_t) bootstack - i * KSTACK_SIZE,
+        PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
   }
 
 	/* LAB 6: your code here. */
