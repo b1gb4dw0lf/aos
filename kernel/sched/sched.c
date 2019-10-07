@@ -104,6 +104,16 @@ void sched_yield(void)
 	}
 }
 
+int check_any_running() {
+  for (int i = 0; i < ncpus; ++i) {
+    if (cpus[i].cpu_status != CPU_HALTED) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
@@ -115,7 +125,9 @@ void sched_halt()
 
   spin_lock(&runq_lock);
 
-	if (!cur_task && list_is_empty(&runq) && this_cpu->cpu_id == 0) {
+  xchg(&this_cpu->cpu_status, CPU_HALTED);
+
+  if (!cur_task && list_is_empty(&runq) && this_cpu->cpu_id == 0 && !check_any_running()) {
     spin_unlock(&runq_lock);
     asm volatile("cli\n");
     while (1) {
@@ -123,7 +135,6 @@ void sched_halt()
     }
 	}
 
-  xchg(&this_cpu->cpu_status, CPU_HALTED);
 
   spin_unlock(&runq_lock);
   asm volatile(
