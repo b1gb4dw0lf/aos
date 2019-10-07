@@ -63,26 +63,31 @@ void sched_yield(void)
 
   if(list_is_empty(&runq) && cur_task == NULL) {
 
-	#ifdef USE_BIG_KERNEL_LOCK
-  sched_release_lock();
-	#endif
+		#ifdef USE_BIG_KERNEL_LOCK
+		sched_release_lock();
+		#endif
 
 		#ifndef USE_BIG_KERNEL_LOCK
 		spin_unlock(&runq_lock);
 		#endif
+
     sched_halt();
 	} else if (list_is_empty(&runq) && cur_task) {
+
 		#ifndef USE_BIG_KERNEL_LOCK
 		spin_unlock(&runq_lock);
 		#endif
+
     task_run(cur_task);
 	}else {
     node = list_pop_left(&runq);
     task = container_of(node, struct task, task_node);
     nuser_tasks--;
+
 		#ifndef USE_BIG_KERNEL_LOCK
 		spin_unlock(&runq_lock);
 		#endif
+
 		task_run(task);
 	}
 }
@@ -90,22 +95,21 @@ void sched_yield(void)
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
-	#ifndef USE_BIG_KERNEL_LOCK
-	if(this_cpu == boot_cpu) {
-	#endif
-	#ifdef USE_BIG_KERNEL_LOCK 
-	if(1) {
-	#endif
-		while (1) {
-			monitor(NULL);
-		}
+	//this_cpu->cpu_status = CPU_HALTED;
+	#ifdef USE_BIG_KERNEL_LOCK
+	while (1) {
+		monitor(NULL);
 	}
+	#endif
+
 	#ifndef USE_BIG_KERNEL_LOCK
 	while(1) {
-		if (list_is_empty(&runq) && cur_task) {
-			while (spin_trylock(&runq_lock) && list_is_empty(&runq)) {
-				sched_yield();
-			}
+		spin_lock(&runq_lock);
+		if(!list_is_empty(&runq) && cur_task == NULL) {
+			spin_unlock(&runq_lock);
+			sched_yield();
+		} else {
+			spin_unlock(&runq_lock);
 		}
 		//do nothing instead of monitor 
 	}
