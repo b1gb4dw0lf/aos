@@ -93,7 +93,9 @@ void sched_halt()
 	#ifndef USE_BIG_KERNEL_LOCK
 	if(this_cpu == boot_cpu) {
 	#endif
-
+	#ifdef USE_BIG_KERNEL_LOCK 
+	if(1) {
+	#endif
 		while (1) {
 			monitor(NULL);
 		}
