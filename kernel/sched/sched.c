@@ -14,7 +14,7 @@ struct list runq;
 
 #ifndef USE_BIG_KERNEL_LOCK
 struct spinlock runq_lock = {
-#ifdef DBEUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK
 	.name = "runq_lock",
 #endif
 };
@@ -54,23 +54,35 @@ void sched_yield(void)
 	struct task *task, *temp_task;
 
 
-#ifdef USE_BIG_KERNEL_LOCK
+	#ifdef USE_BIG_KERNEL_LOCK
 	sched_get_lock();
-#endif
+	#endif
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_lock(&runq_lock);
+	#endif
 
   if(list_is_empty(&runq) && cur_task == NULL) {
 
-#ifdef USE_BIG_KERNEL_LOCK
-    sched_release_lock();
-#endif
+	#ifdef USE_BIG_KERNEL_LOCK
+  sched_release_lock();
+	#endif
 
+		#ifndef USE_BIG_KERNEL_LOCK
+		spin_unlock(&runq_lock);
+		#endif
     sched_halt();
 	} else if (list_is_empty(&runq) && cur_task) {
+		#ifndef USE_BIG_KERNEL_LOCK
+		spin_unlock(&runq_lock);
+		#endif
     task_run(cur_task);
 	}else {
     node = list_pop_left(&runq);
     task = container_of(node, struct task, task_node);
     nuser_tasks--;
+		#ifndef USE_BIG_KERNEL_LOCK
+		spin_unlock(&runq_lock);
+		#endif
 		task_run(task);
 	}
 }
