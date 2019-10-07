@@ -90,13 +90,23 @@ void sched_yield(void)
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
+	#ifndef USE_BIG_KERNEL_LOCK
 	if(this_cpu == boot_cpu) {
+	#endif
+
 		while (1) {
 			monitor(NULL);
 		}
 	}
+	#ifndef USE_BIG_KERNEL_LOCK
 	while(1) {
+		if (list_is_empty(&runq) && cur_task) {
+			while (spin_trylock(&runq_lock) && list_is_empty(&runq)) {
+				sched_yield();
+			}
+		}
 		//do nothing instead of monitor 
 	}
+	#endif
 }
 
