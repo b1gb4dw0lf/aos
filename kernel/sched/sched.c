@@ -25,6 +25,8 @@ extern size_t nuser_tasks;
 void sched_init(void)
 {
 	list_init(&runq);
+	spin_init(&runq_lock, "runq_lock");
+	spin_lock(&runq_lock);
 }
 
 void sched_init_mp(void)
@@ -46,6 +48,18 @@ void sched_release_lock(void) {
   }
 }
 
+void sched_get_runq(void) {
+  if (!holding(&runq_lock)) {
+    spin_lock(&runq_lock);
+  }
+}
+
+void sched_release_runq(void) {
+  if (holding(&runq_lock)) {
+    spin_unlock(&runq_lock);
+  }
+}
+
 /* Runs the next runnable task. */
 void sched_yield(void)
 {
@@ -58,24 +72,22 @@ void sched_yield(void)
 	sched_get_lock();
 	#endif
 	#ifndef USE_BIG_KERNEL_LOCK
-	spin_lock(&runq_lock);
+  sched_get_runq();
 	#endif
 
   if(list_is_empty(&runq) && cur_task == NULL) {
 
 		#ifdef USE_BIG_KERNEL_LOCK
 		sched_release_lock();
-		#endif
-
-		#ifndef USE_BIG_KERNEL_LOCK
-		spin_unlock(&runq_lock);
+		#else
+    sched_release_runq();
 		#endif
 
     sched_halt();
 	} else if (list_is_empty(&runq) && cur_task) {
 
 		#ifndef USE_BIG_KERNEL_LOCK
-		spin_unlock(&runq_lock);
+    sched_release_runq();
 		#endif
 
     task_run(cur_task);
@@ -85,7 +97,7 @@ void sched_yield(void)
     nuser_tasks--;
 
 		#ifndef USE_BIG_KERNEL_LOCK
-		spin_unlock(&runq_lock);
+    sched_release_runq();
 		#endif
 
 		task_run(task);
@@ -100,19 +112,29 @@ void sched_halt()
 	while (1) {
 		monitor(NULL);
 	}
-	#endif
+  #else
 
-	#ifndef USE_BIG_KERNEL_LOCK
-	while(1) {
-		spin_lock(&runq_lock);
-		if(!list_is_empty(&runq) && cur_task == NULL) {
-			spin_unlock(&runq_lock);
-			sched_yield();
-		} else {
-			spin_unlock(&runq_lock);
-		}
-		//do nothing instead of monitor 
+  spin_lock(&runq_lock);
+
+	if (!cur_task && list_is_empty(&runq) && this_cpu->cpu_id == 0) {
+    spin_unlock(&runq_lock);
+    asm volatile("cli\n");
+    while (1) {
+      monitor(NULL);
+    }
 	}
+
+  xchg(&this_cpu->cpu_status, CPU_HALTED);
+
+  spin_unlock(&runq_lock);
+  asm volatile(
+    "mov $0, %%rbp\n"
+    "mov %0, %%rsp\n"
+    "push $0\n"
+    "push $0\n"
+    "sti\n"
+    "hlt\n" :: "a"(this_cpu->cpu_tss.rsp[0]));
+
 	#endif
 }
 

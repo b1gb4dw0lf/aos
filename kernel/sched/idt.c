@@ -180,6 +180,7 @@ void idt_init_mp(void)
 	idt_init();
 }
 
+extern struct list runq;
 void int_dispatch(struct int_frame *frame)
 {
 	/* Handle processor exceptions:
@@ -198,7 +199,12 @@ void int_dispatch(struct int_frame *frame)
 			return;
 		case IRQ_TIMER:
 		  lapic_eoi();
-		  sched_yield();
+		  if (this_cpu->cpu_status == CPU_HALTED) {
+        xchg(&this_cpu->cpu_status, CPU_STARTED);
+		  }
+
+      sched_yield();
+
 		  return;
     case INT_SYSCALL:
 			frame->rax = (uint64_t)syscall(frame->rdi, frame->rsi, frame->rdx, frame->rcx, frame->r8, frame->r9, frame->rbp); //frame->rbp = 7th

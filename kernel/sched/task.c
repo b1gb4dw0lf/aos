@@ -144,7 +144,6 @@ static int task_setup_vas(struct task *task)
  */
 struct task *task_alloc(pid_t ppid)
 {
-  cprintf("Allocating task\n");
 	struct task *task;
 	pid_t pid;
 
