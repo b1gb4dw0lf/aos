@@ -48,7 +48,11 @@ void sched_yield(void)
 	struct task *task, *temp_task;
 
   if(list_is_empty(&runq) && cur_task == NULL) {
+
+#ifdef USE_BIG_KERNEL_LOCK
     sched_release_lock();
+#endif
+
     sched_halt();
 	} else if (list_is_empty(&runq) && cur_task) {
     task_run(cur_task);

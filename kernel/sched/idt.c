@@ -230,8 +230,9 @@ void int_handler(struct int_frame *frame)
 	assert(!(read_rflags() & FLAGS_IF));
 
 	if ((frame->cs & 3) == 3) {
-
+#ifdef USE_BIG_KERNEL_LOCK
 	  spin_lock(&BIG_KERNEL_LOCK);
+#endif
 
 		/* Interrupt from user mode. */
 		assert(cur_task);
@@ -248,10 +249,11 @@ void int_handler(struct int_frame *frame)
 	/* Dispatch based on the type of interrupt that occurred. */
 	int_dispatch(frame);
 
-
+#ifdef USE_BIG_KERNEL_LOCK
   if ((frame->cs & 3) == 3) {
     spin_unlock(&BIG_KERNEL_LOCK);
   }
+#endif
 
   /* Return to the current task, which should be running. */
 	task_run(cur_task);
