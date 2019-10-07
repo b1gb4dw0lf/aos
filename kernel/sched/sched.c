@@ -77,7 +77,7 @@ void sched_yield(void)
 		#ifndef USE_BIG_KERNEL_LOCK
 		spin_unlock(&runq_lock);
 		#endif
-
+		cur_task->task_cpunum = this_cpu->cpu_id;
     task_run(cur_task);
 	}else {
     node = list_pop_left(&runq);
@@ -87,7 +87,7 @@ void sched_yield(void)
 		#ifndef USE_BIG_KERNEL_LOCK
 		spin_unlock(&runq_lock);
 		#endif
-
+    task->task_cpunum = this_cpu->cpu_id;
 		task_run(task);
 	}
 }
@@ -102,15 +102,13 @@ void sched_halt()
 	#endif
 
 	#ifndef USE_BIG_KERNEL_LOCK
-	while(1) {
-		spin_lock(&runq_lock);
-		if(!list_is_empty(&runq) && cur_task != NULL) {
-			spin_unlock(&runq_lock);
-			sched_yield();
-		}else {
-			spin_unlock(&runq_lock);
+	if(this_cpu != boot_cpu) {
+		while(1) {
 		}
-		//do nothing instead of monitor 
+	} else {
+		while(1) {
+			monitor(NULL);
+		}	
 	}
 	#endif
 }

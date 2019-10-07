@@ -91,7 +91,7 @@ static int sys_kill(pid_t pid)
 }
 
 static unsigned int sys_getcpuid(void) {
-	return this_cpu->cpu_id;
+	return cur_task->task_cpunum;
 }
 
 /* Dispatches to the correct kernel function, passing the arguments. */
