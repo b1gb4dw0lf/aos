@@ -89,7 +89,7 @@ void sched_yield(void)
 		#ifndef USE_BIG_KERNEL_LOCK
     sched_release_runq();
 		#endif
-
+		cur_task->task_cpunum = this_cpu->cpu_id;
     task_run(cur_task);
 	}else {
     node = list_pop_left(&runq);
@@ -99,7 +99,7 @@ void sched_yield(void)
 		#ifndef USE_BIG_KERNEL_LOCK
     sched_release_runq();
 		#endif
-
+    task->task_cpunum = this_cpu->cpu_id;
 		task_run(task);
 	}
 }
@@ -107,7 +107,6 @@ void sched_yield(void)
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
-	//this_cpu->cpu_status = CPU_HALTED;
 	#ifdef USE_BIG_KERNEL_LOCK
 	while (1) {
 		monitor(NULL);
