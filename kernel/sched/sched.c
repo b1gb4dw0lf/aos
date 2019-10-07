@@ -34,6 +34,12 @@ void sched_init_mp(void)
 	this_cpu->runq_len = 0;
 }
 
+void sched_get_lock(void) {
+  if (!holding(&BIG_KERNEL_LOCK)) {
+    spin_lock(&BIG_KERNEL_LOCK);
+  }
+}
+
 void sched_release_lock(void) {
   if (holding(&BIG_KERNEL_LOCK)) {
     spin_unlock(&BIG_KERNEL_LOCK);
@@ -46,6 +52,11 @@ void sched_yield(void)
 	/* LAB 5: your code here. */
 	struct list *node, *temp;
 	struct task *task, *temp_task;
+
+
+#ifdef USE_BIG_KERNEL_LOCK
+	sched_get_lock();
+#endif
 
   if(list_is_empty(&runq) && cur_task == NULL) {
 

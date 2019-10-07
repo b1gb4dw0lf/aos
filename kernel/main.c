@@ -55,6 +55,11 @@ void kmain(struct boot_info *boot_info)
 	task_init();
 	sched_init();
 
+#ifdef USE_BIG_KERNEL_LOCK
+	// Prevent other CPUs to die
+	spin_lock(&BIG_KERNEL_LOCK);
+#endif
+
   boot_cpus();
 
 #if defined(TEST)
