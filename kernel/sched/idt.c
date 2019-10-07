@@ -15,6 +15,8 @@
 #include <kernel/acpi.h>
 #include <kernel/sched.h>
 
+extern struct spinlock kernel_lock;
+
 static const char *int_names[256] = {
 	[INT_DIVIDE] = "Divide-by-Zero Error Exception (#DE)",
 	[INT_DEBUG] = "Debug (#DB)",
@@ -170,11 +172,7 @@ void idt_init(void)
 	for (int i = 0; i < 15; i++) {
 		set_idt_entry(&idtr.entries[IRQ_OFFSET + i], isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)),GDT_KCODE);
 	}
-//	set_idt_entry(&idtr.entries[IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
-//	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
-	/*set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_KBD],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
-	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SERIAL],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
-	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SPURIOUS],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);*/
+
 	load_idt(&idtr);
 }
 
@@ -201,6 +199,12 @@ void int_dispatch(struct int_frame *frame)
 			return;
 		case IRQ_TIMER:
 		  lapic_eoi();
+
+		  if (this_cpu->cpu_status == CPU_HALTED) {
+		    this_cpu->cpu_status = CPU_STARTED;
+		    spin_lock(&kernel_lock);
+		  }
+
 		  sched_yield();
     case INT_SYSCALL:
 			frame->rax = (uint64_t)syscall(frame->rdi, frame->rsi, frame->rdx, frame->rcx, frame->r8, frame->r9, frame->rbp); //frame->rbp = 7th
@@ -242,9 +246,12 @@ void int_handler(struct int_frame *frame)
 
 		/* Avoid using the frame on the stack. */
 		frame = &cur_task->task_frame;
-	}
 
-	/* Dispatch based on the type of interrupt that occurred. */
+		// Get lock from user to kern
+    spin_lock(&kernel_lock);
+  }
+
+  /* Dispatch based on the type of interrupt that occurred. */
 	int_dispatch(frame);
 
 	/* Return to the current task, which should be running. */

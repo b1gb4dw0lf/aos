@@ -22,6 +22,8 @@ struct spinlock runq_lock = {
 
 extern size_t nuser_tasks;
 
+extern struct spinlock kernel_lock;
+
 void sched_init(void)
 {
 	list_init(&runq);
@@ -34,7 +36,10 @@ void sched_init_mp(void)
 	this_cpu->runq_len = 0;
 }
 
-/* Runs the next runnable task. */
+/**
+ * This will be either called from syscalls or init sides
+ * Caller needs to acquire a lock
+ */
 void sched_yield(void)
 {
 	/* LAB 5: your code here. */
@@ -53,11 +58,41 @@ void sched_yield(void)
 	}
 }
 
+int check_running() {
+  for (int i = 0; i < ncpus; ++i) {
+    if (cpus[i].cpu_status != CPU_HALTED) return 1;
+  }
+  return 0;
+}
+
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
-	while (1) {
-		monitor(NULL);
-	}
+
+  xchg(&this_cpu->cpu_status, CPU_HALTED);
+
+  if (list_is_empty(&runq) && boot_cpu->cpu_status == CPU_HALTED) {
+    if (this_cpu->cpu_id == boot_cpu->cpu_id && !check_running()) {
+      spin_unlock(&kernel_lock);
+      asm volatile("cli\n");
+      while (1) {
+        monitor(NULL);
+      }
+    } else if (this_cpu->cpu_id != boot_cpu->cpu_id) {
+      spin_unlock(&kernel_lock);
+      asm volatile(
+        "cli\n"
+        "hlt\n");
+    }
+  }
+
+  spin_unlock(&kernel_lock);
+  asm volatile(
+  "mov $0, %%rbp\n"
+  "mov %0, %%rsp\n"
+  "push $0\n"
+  "push $0\n"
+  "sti\n"
+  "hlt\n" :: "a"(this_cpu->cpu_tss.rsp[0]));
 }
 

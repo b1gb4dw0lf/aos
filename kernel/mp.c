@@ -10,6 +10,7 @@
  * pointer that should be loaded by boot_ap().
  */
 void *mpentry_kstack;
+extern struct spinlock kernel_lock;
 
 void boot_cpus(void)
 {
@@ -71,10 +72,8 @@ void mp_main(void)
 	xchg(&this_cpu->cpu_status, CPU_STARTED);
 
 	/* Schedule tasks. */
-	/* LAB 6: remove this code when you are ready */
-	asm volatile(
-		"cli\n"
-		"hlt\n");
-	sched_yield();
+  spin_lock(&kernel_lock);
+
+  sched_yield();
 }
 

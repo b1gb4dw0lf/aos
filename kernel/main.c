@@ -15,6 +15,8 @@
 #include <kernel/sched.h>
 #include <kernel/tests.h>
 
+extern struct spinlock kernel_lock;
+
 void kmain(struct boot_info *boot_info)
 {
 	extern char edata[], end[];
@@ -53,6 +55,8 @@ void kmain(struct boot_info *boot_info)
 	task_init();
 	sched_init();
 	sched_init_mp();
+
+	spin_lock(&kernel_lock);
 
 	boot_cpus();
 

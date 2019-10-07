@@ -14,6 +14,7 @@ pid_t pid_max = 1 << 16;
 struct task **tasks = (struct task **)PIDMAP_BASE;
 size_t nuser_tasks = 0;
 extern struct list runq;
+extern struct spinlock kernel_lock;
 
 /* Looks up the respective task for a given PID.
  * If check_perm is non-zero, this function checks if the PID maps to the
@@ -539,6 +540,9 @@ void task_run(struct task *task)
   cur_task->task_status = TASK_RUNNING;
   cur_task->task_runs++;
   load_pml4((struct page_table *) PADDR(task->task_pml4));
+
+  spin_unlock(&kernel_lock);
+
   task_pop_frame(&task->task_frame);
 
 	/* LAB 3: Your code here. */
