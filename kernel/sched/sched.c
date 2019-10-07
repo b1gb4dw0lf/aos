@@ -98,6 +98,5 @@ void sched_halt()
 	while(1) {
 		//do nothing instead of monitor 
 	}
-
 }
 
