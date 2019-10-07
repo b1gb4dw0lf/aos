@@ -95,7 +95,6 @@ void sched_yield(void)
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
-	//this_cpu->cpu_status = CPU_HALTED;
 	#ifdef USE_BIG_KERNEL_LOCK
 	while (1) {
 		monitor(NULL);
@@ -105,10 +104,10 @@ void sched_halt()
 	#ifndef USE_BIG_KERNEL_LOCK
 	while(1) {
 		spin_lock(&runq_lock);
-		if(!list_is_empty(&runq) && cur_task == NULL) {
+		if(!list_is_empty(&runq) && cur_task != NULL) {
 			spin_unlock(&runq_lock);
 			sched_yield();
-		} else {
+		}else {
 			spin_unlock(&runq_lock);
 		}
 		//do nothing instead of monitor 
