@@ -90,6 +90,10 @@ static int sys_kill(pid_t pid)
 	return 0;
 }
 
+static unsigned int sys_getcpuid(void) {
+	return this_cpu->cpu_id;
+}
+
 /* Dispatches to the correct kernel function, passing the arguments. */
 int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
         uint64_t a4, uint64_t a5, uint64_t a6)
@@ -130,6 +134,8 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
     case SYS_waitpid:
       return sys_waitpid((pid_t) a1, (int *) a2, (int) a3);
     case SYS_exec:
+		case SYS_getcpuid:
+			return sys_getcpuid();
       return sys_exec((char *) a1);
     default:
 			return -ENOSYS;
