@@ -134,9 +134,9 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
     case SYS_waitpid:
       return sys_waitpid((pid_t) a1, (int *) a2, (int) a3);
     case SYS_exec:
+			return sys_exec((char *) a1);
 		case SYS_getcpuid:
 			return sys_getcpuid();
-      return sys_exec((char *) a1);
     default:
 			return -ENOSYS;
 	}

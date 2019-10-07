@@ -124,13 +124,13 @@ void sched_halt()
   #else
 
   spin_lock(&runq_lock);
-
   xchg(&this_cpu->cpu_status, CPU_HALTED);
-
   if (!cur_task && list_is_empty(&runq) && this_cpu->cpu_id == 0 && !check_any_running()) {
+		cprintf("BOOTDAT MONITORRR\n");
     spin_unlock(&runq_lock);
     asm volatile("cli\n");
     while (1) {
+			cprintf("go into monitor\n");
       monitor(NULL);
     }
 	}
