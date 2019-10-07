@@ -90,8 +90,14 @@ void sched_yield(void)
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
-	while (1) {
-		monitor(NULL);
+	if(this_cpu == boot_cpu) {
+		while (1) {
+			monitor(NULL);
+		}
 	}
+	while(1) {
+		//do nothing instead of monitor 
+	}
+
 }
 
