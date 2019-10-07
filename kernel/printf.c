@@ -33,6 +33,10 @@ int vcprintf(const char *fmt, va_list ap)
 
 int cprintf(const char *fmt, ...)
 {
+	/* engage lock */
+	#ifndef USE_BIG_KERNEL_LOCK 
+	spin_lock(&console_lock);
+	#endif
 	va_list ap;
 	int cnt;
 
@@ -40,6 +44,9 @@ int cprintf(const char *fmt, ...)
 	cnt = vcprintf(fmt, ap);
 	va_end(ap);
 
+	#ifndef USE_BIG_KERNEL_LOCK 
+	spin_unlock(&console_lock);
+	#endif
 	return cnt;
 }
 
