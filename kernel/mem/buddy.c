@@ -26,6 +26,7 @@ struct spinlock buddy_lock = {
  */
 size_t count_free_pages(size_t order)
 {
+
 	struct list *node;
 	size_t nfree_pages = 0;
 
@@ -33,9 +34,17 @@ size_t count_free_pages(size_t order)
 		return 0;
 	}
 
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_lock(&buddy_lock);
+	#endif
+
 	list_foreach(page_free_list + order, node) {
 		++nfree_pages;
 	}
+
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_unlock(&buddy_lock);
+	#endif
 
 	return nfree_pages;
 }
@@ -53,6 +62,10 @@ void show_buddy_info(void)
 	size_t nfree_pages;
 	size_t nfree = 0;
 
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_lock(&buddy_lock);
+	#endif
+
 	cprintf("Buddy allocator:\n");
 
 	for (order = 0; order < BUDDY_MAX_ORDER; ++order) {
@@ -64,6 +77,10 @@ void show_buddy_info(void)
 	}
 
 	cprintf("  free: %u kiB\n", nfree / 1024);
+
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_unlock(&buddy_lock);
+	#endif
 }
 
 /* Gets the total amount of free pages. */
@@ -250,6 +267,10 @@ struct page_info *page_alloc(int alloc_flags)
   assert(page->pp_ref == 0);
 #endif
 
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_lock(&buddy_lock);
+	#endif
+
   page->pp_free = 0;
   list_remove(&page->pp_node);
   if(list_is_empty(page_free_list + page->pp_order)) {
@@ -260,6 +281,10 @@ struct page_info *page_alloc(int alloc_flags)
     uint64_t page_size = (1<<page->pp_order) * PAGE_SIZE;
     memset(page2kva(page), 0, page_size);
   }
+
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_unlock(&buddy_lock);
+	#endif
 
   return page;
 }
@@ -290,12 +315,20 @@ void page_free(struct page_info *pp)
   list_init(&pp->pp_node);
   pp->pp_free=1; //Mark page as free
 
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_lock(&buddy_lock);
+	#endif
+
   if(pp->pp_order == (BUDDY_MAX_ORDER -1)) {
     list_insert_after(page_free_list + pp->pp_order, &pp->pp_node); //Add node to free list
   } else {
     res = buddy_merge(pp); // Merge page with buddies TODO implement this
     list_insert_after(page_free_list + res->pp_order, &res->pp_node); //Add node to free list
   }
+
+	#ifndef USE_BIG_KERNEL_LOCK
+	spin_unlock(&buddy_lock);
+	#endif
 }
 
 /*
