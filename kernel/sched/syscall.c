@@ -33,6 +33,7 @@ void syscall_init(void)
 void syscall_init_mp(void)
 {
 	/* LAB 6: your code here. */
+	syscall_init();
 }
 
 /*

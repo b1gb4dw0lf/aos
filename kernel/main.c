@@ -52,6 +52,9 @@ void kmain(struct boot_info *boot_info)
 	/* Set up the tasks. */
 	task_init();
 	sched_init();
+	sched_init_mp();
+
+	boot_cpus();
 
 #if defined(TEST)
 	TASK_CREATE(TEST, TASK_TYPE_USER);

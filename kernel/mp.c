@@ -54,9 +54,18 @@ void mp_main(void)
 
 	/* LAB 6: your code here. */
 	/* Initialize the local APIC. */
+	lapic_init();
+
 	/* Set up segmentation, interrupts, system call support. */
+  gdt_init_mp();
+  idt_init_mp();
+  syscall_init_mp();
+
 	/* Set up the per-CPU slab allocator. */
+	kmem_init_mp();
+
 	/* Set up the per-CPU scheduler. */
+  sched_init_mp();
 
 	/* Notify the main CPU that we started up. */
 	xchg(&this_cpu->cpu_status, CPU_STARTED);
