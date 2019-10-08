@@ -94,9 +94,22 @@ int sys_getcpuid() {
   return this_cpu->cpu_id;
 }
 #ifdef BONUS_LAB6
-int sched_setaffinity(pid_t pid, unsigned cpusetsize, cpu_set_t *mask) {
+int sched_setaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask) {
+	struct task *task = pid2task(pid, 1);
+	if(!task) return -1;
+	spin_lock(&task->task_lock);
+	task->affinity = mask; 
+	spin_unlock(&task->task_lock);
+	return 0;
 }
-int sched_getaffinity(pid_t pid, unsigned cpusetsize, cpu_set_t *mask) {
+
+int sched_getaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask) {
+	struct task *task = pid2task(pid, 1);
+	if(!task) return -1;
+	spin_lock(&task->task_lock);
+	mask = task->affinity;
+	spin_unlock(&task->task_lock);
+	return 0;
 }
 #endif
 
@@ -144,9 +157,9 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	    return sys_getcpuid();
 #ifdef BONUS_LAB6
 		case SYS_sched_setaffinity:
-			return sched_setaffinity();
+			return sched_setaffinity((pid_t) a1, (uint64_t) a2, (uint64_t) a3);
 		case SYS_sched_getaffinity:
-			return sched_getaffinity();
+			return sched_getaffinity((pid_t) a1, (uint64_t) a2, (uint64_t) a3);
 #endif
     default:
 			return -ENOSYS;

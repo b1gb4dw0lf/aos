@@ -108,3 +108,13 @@ unsigned int getcpuid(void)
 	return syscall(SYS_getcpuid, 0, 0, 0, 0, 0, 0, 0);
 }
 
+#ifdef BONUS_LAB6
+int sched_setaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask)
+{
+	return syscall(SYS_sched_setaffinity, 0, (uint64_t)pid, (uint64_t)cpusetsize, (uint64_t)mask, 0, 0, 0);
+}
+int sched_getaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask)
+{
+	return syscall(SYS_sched_getaffinity, 0, (uint64_t)pid, (uint64_t)cpusetsize, (uint64_t)mask, 0, 0, 0);
+}
+#endif

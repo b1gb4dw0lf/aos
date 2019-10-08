@@ -8,9 +8,12 @@ int main(int argc, char **argv)
 
 	/* Fork a bunch of processes. */
 	for (i = 0; i < 16; ++i) {
-		if (fork() == 0) {
+		pid = fork();
+		if (pid == 0) {
 			break;
 		}
+
+		//sched_setaffinity(pid, 0, 2);
 	}
 
 	pid = getpid();

@@ -155,6 +155,16 @@ void sched_yield(void)
 	}else {
     node = list_pop_left(func_runq);
     task = container_of(node, struct task, task_node);
+
+#ifdef BONUS_LAB6
+    if(task->affinity != 0 && !(task->affinity & this_cpu->cpu_id)) {
+      spin_lock(&runq_lock);
+      list_push(&runq, node);
+      spin_unlock(&runq_lock);
+      sched_yield();
+    }
+#endif
+
     task->task_cpunum = this_cpu->cpu_id;
 
 #ifndef USE_BIG_KERNEL_LOCK

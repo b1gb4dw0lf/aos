@@ -74,5 +74,8 @@ struct task {
 	/* Per-task lock */
 	struct spinlock task_lock;
 #endif
+#ifdef BONUS_LAB6
+	uint64_t affinity;
+#endif
 };
 

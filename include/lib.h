@@ -65,6 +65,10 @@ int getc(void);
 pid_t getpid(void);
 int kill(pid_t);
 unsigned getcpuid(void);
+#ifdef BONUS_LAB6
+int sched_setaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask);
+int sched_getaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask);
+#endif
 
 int mquery(struct vma_info *info, void *addr);
 void *mmap(void *addr, size_t len, int prot, int flags, int fd,
