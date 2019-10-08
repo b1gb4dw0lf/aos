@@ -35,7 +35,9 @@ void sched_init_mp(void)
 {
 	/* LAB 6: your code here. */
 	list_init(&this_cpu->runq);
+	list_init(&this_cpu->nextq);
 	this_cpu->runq_len = 0;
+	this_cpu->nextq_len = 0;
 	this_cpu->cpu_task = NULL;
 }
 
@@ -59,9 +61,8 @@ size_t get_from_parent(size_t max) {
       return i;
     };
 
-    nuser_tasks--;
-    list_insert_after(&this_cpu->runq, node);
-    this_cpu->runq_len++;
+    list_insert_after(&this_cpu->nextq, node);
+    this_cpu->nextq_len++;
   }
 
   return i;
@@ -72,18 +73,34 @@ size_t pass_to_parent(size_t max) {
   size_t i = 0;
 
   for (i = 0; i < max; ++i) {
-    node = list_pop_left(&this_cpu->runq);
+    node = list_pop(&this_cpu->nextq);
 
     if (!node) {
       return i;
     };
 
-    this_cpu->runq_len--;
+    this_cpu->nextq_len--;
     list_insert_after(&runq, node);
-    nuser_tasks++;
   }
 
   return i;
+}
+
+void swap_queue() {
+  struct list * node;
+  size_t i = 0;
+
+  for (i = 0; i < this_cpu->nextq_len; ++i) {
+    node = list_pop_left(&this_cpu->nextq);
+
+    if (!node) {
+      break;
+    };
+
+    list_insert_after(&this_cpu->runq, node);
+    this_cpu->runq_len++;
+  }
+  this_cpu->nextq_len = 0;
 }
 
 /**
@@ -99,28 +116,30 @@ void sched_yield(void)
 #ifndef USE_BIG_KERNEL_LOCK
   func_runq = &this_cpu->runq;
 
-  spin_lock(&runq_lock);
-  if (this_cpu->runq_len > 1) {
-    pass_to_parent(this_cpu->runq_len - 2);
+
+  if (list_is_empty(&this_cpu->runq)) {
+    spin_lock(&runq_lock);
+    size_t queue_size = 1;
+
+    if (this_cpu->nextq_len > queue_size) {
+      pass_to_parent(this_cpu->nextq_len - queue_size);
+    } else if (this_cpu->nextq_len < queue_size) {
+      get_from_parent(queue_size - this_cpu->nextq_len);
+    }
+
+    swap_queue();
+    spin_unlock(&runq_lock);
   }
-  spin_unlock(&runq_lock);
+
 
 #else
   func_runq = &runq;
 #endif
 
 	if(list_is_empty(func_runq) && this_cpu->cpu_task == NULL) {
-
 #ifndef USE_BIG_KERNEL_LOCK
     spin_lock(&runq_lock);
-    size_t len = get_from_parent(3);
-    if (len == 0 || list_is_empty(func_runq)) {
-      sched_halt();
-    }
-    spin_unlock(&runq_lock);
-    sched_yield();
 #endif
-
 	  sched_halt();
 	} else if (list_is_empty(func_runq) && this_cpu->cpu_task) {
 

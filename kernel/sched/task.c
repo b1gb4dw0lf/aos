@@ -539,8 +539,8 @@ void task_run(struct task *task)
 	  list_insert_after(&runq, &this_cpu->cpu_task->task_node);
 	  nuser_tasks++;
 #else
-    list_insert_after(&this_cpu->runq, &this_cpu->cpu_task->task_node);
-    this_cpu->runq_len++;
+    list_insert_after(&this_cpu->nextq, &this_cpu->cpu_task->task_node);
+    this_cpu->nextq_len++;
 #endif
   }
 
