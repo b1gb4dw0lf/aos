@@ -48,6 +48,23 @@ void display_currents(void) {
   }
 }
 
+size_t get_from_parent(size_t max) {
+  struct list * node;
+  size_t i = 0;
+  for (i = 0; i < max; ++i) {
+    node = list_pop_left(&runq);
+
+    if (!node) {
+      return i;
+    };
+
+    list_insert_after(&this_cpu->runq, node);
+    this_cpu->runq_len++;
+  }
+
+  return i;
+}
+
 /**
  * This will be either called from syscalls or init sides
  * Caller needs to acquire a lock
@@ -55,36 +72,48 @@ void display_currents(void) {
 void sched_yield(void)
 {
 	/* LAB 5: your code here. */
-	struct list *node;
+	struct list *node, * func_runq;
 	struct task *task;
 
 #ifndef USE_BIG_KERNEL_LOCK
-  spin_lock(&runq_lock);
+  func_runq = &this_cpu->runq;
+#else
+  func_runq = &runq;
 #endif
 
-	if(list_is_empty(&runq) && this_cpu->cpu_task == NULL) {
+	if(list_is_empty(func_runq) && this_cpu->cpu_task == NULL) {
+
+#ifndef USE_BIG_KERNEL_LOCK
+    spin_lock(&runq_lock);
+    size_t len = get_from_parent(3);
+    if (len == 0 || list_is_empty(func_runq)) {
+      sched_halt();
+    }
+    spin_unlock(&runq_lock);
+    sched_yield();
+#endif
+
 	  sched_halt();
-	} else if (list_is_empty(&runq) && this_cpu->cpu_task) {
+	} else if (list_is_empty(func_runq) && this_cpu->cpu_task) {
 
 	  // If current task has been killed by some other task
 	  if (this_cpu->cpu_task->task_pid == 0) {
       this_cpu->cpu_task = NULL;
 	    sched_halt();
 	  }
-
-#ifndef USE_BIG_KERNEL_LOCK
-    spin_unlock(&runq_lock);
-#endif
 	  task_run(this_cpu->cpu_task);
 	}else {
-    node = list_pop_left(&runq);
+    node = list_pop_left(func_runq);
     task = container_of(node, struct task, task_node);
     task->task_cpunum = this_cpu->cpu_id;
-    nuser_tasks--;
+
 #ifndef USE_BIG_KERNEL_LOCK
-    spin_unlock(&runq_lock);
+    this_cpu->runq_len--;
+#else
+    nuser_tasks--;
 #endif
-		task_run(task);
+
+    task_run(task);
 	}
 }
 
