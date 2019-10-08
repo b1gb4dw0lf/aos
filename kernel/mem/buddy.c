@@ -199,9 +199,6 @@ struct page_info *buddy_merge(struct page_info *page)
  */
 struct page_info *buddy_find(size_t req_order)
 {
-#ifndef USE_BIG_KERNEL_LOCK
-  spin_lock(&buddy_lock);
-#endif
   struct list *node;
   struct page_info *res;
   struct page_info *page;
@@ -212,19 +209,10 @@ struct page_info *buddy_find(size_t req_order)
 
       if(page->pp_free && order == req_order) {
         // Found a free page with the requested order
-#ifndef USE_BIG_KERNEL_LOCK
-        spin_unlock(&buddy_lock);
-#endif
-
         return page;
       } else if (order > req_order && page->pp_free){
         // We found a free page with a greater order so we need to split
         page = buddy_split(page, req_order);
-
-#ifndef USE_BIG_KERNEL_LOCK
-        spin_unlock(&buddy_lock);
-#endif
-
         return page;
       }
     }
@@ -296,9 +284,6 @@ struct page_info *page_alloc(int alloc_flags)
  */
 void page_free(struct page_info *pp)
 {
-#ifndef USE_BIG_KERNEL_LOCK
-  spin_lock(&buddy_lock);
-#endif
   struct page_info *res;
 
   // Make sure the page has no refs
@@ -322,10 +307,6 @@ void page_free(struct page_info *pp)
     res = buddy_merge(pp); // Merge page with buddies TODO implement this
     list_insert_after(page_free_list + res->pp_order, &res->pp_node); //Add node to free list
   }
-
-#ifndef USE_BIG_KERNEL_LOCK
-  spin_unlock(&buddy_lock);
-#endif
 }
 
 /*
@@ -403,18 +384,36 @@ int buddy_map_chunk(struct page_table *pml4, size_t index)
 	index = ROUNDDOWN(index, nblocks);
 	base = pages + index;
 
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&buddy_lock);
+#endif
 	for (i = 0; i < nalloc; ++i) {
 		page = page_alloc(ALLOC_ZERO);
+#ifndef USE_BIG_KERNEL_LOCK
+    spin_lock(&buddy_lock);
+#endif
 
 		if (!page) {
+#ifndef USE_BIG_KERNEL_LOCK
+      spin_unlock(&buddy_lock);
+#endif
 			return -1;
 		}
 
 		if (page_insert(pml4, page, (char *)base + i * PAGE_SIZE,
 		    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC) < 0) {
+#ifndef USE_BIG_KERNEL_LOCK
+      spin_unlock(&buddy_lock);
+#endif
 			return -1;
 		}
+#ifndef USE_BIG_KERNEL_LOCK
+    spin_unlock(&buddy_lock);
+#endif
 	}
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&buddy_lock);
+#endif
 
 	for (i = 0; i < nblocks; ++i) {
 		page = base + i;

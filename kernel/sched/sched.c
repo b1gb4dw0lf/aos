@@ -36,6 +36,7 @@ void sched_init_mp(void)
 	/* LAB 6: your code here. */
 	list_init(&this_cpu->runq);
 	this_cpu->runq_len = 0;
+	this_cpu->cpu_task = NULL;
 }
 
 void display_currents(void) {
@@ -54,8 +55,12 @@ void display_currents(void) {
 void sched_yield(void)
 {
 	/* LAB 5: your code here. */
-	struct list *node, *temp;
-	struct task *task, *temp_task;
+	struct list *node;
+	struct task *task;
+
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&runq_lock);
+#endif
 
 	if(list_is_empty(&runq) && this_cpu->cpu_task == NULL) {
 	  sched_halt();
@@ -67,12 +72,18 @@ void sched_yield(void)
 	    sched_halt();
 	  }
 
+#ifndef USE_BIG_KERNEL_LOCK
+    spin_unlock(&runq_lock);
+#endif
 	  task_run(this_cpu->cpu_task);
 	}else {
     node = list_pop_left(&runq);
     task = container_of(node, struct task, task_node);
     task->task_cpunum = this_cpu->cpu_id;
     nuser_tasks--;
+#ifndef USE_BIG_KERNEL_LOCK
+    spin_unlock(&runq_lock);
+#endif
 		task_run(task);
 	}
 }
@@ -92,6 +103,8 @@ void sched_halt()
 
 #ifdef USE_BIG_KERNEL_LOCK
   spin_unlock(&kernel_lock);
+#else
+  spin_unlock(&runq_lock);
 #endif
 
   if (list_is_empty(&runq) && boot_cpu->cpu_status == CPU_HALTED) {

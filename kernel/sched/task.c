@@ -500,6 +500,8 @@ void task_pop_frame(struct int_frame *frame)
 	panic("We should have gone back to userspace!");
 }
 
+extern struct spinlock runq_lock;
+
 /* Context switch from the current task to the provided task.
  * Note: if this is the first call to task_run(), cur_task is NULL.
  *
@@ -533,8 +535,10 @@ void task_run(struct task *task)
   }
 
 	if (this_cpu->cpu_task && this_cpu->cpu_task != task) {
+	  spin_lock(&runq_lock);
 	  list_insert_after(&runq, &this_cpu->cpu_task->task_node);
 	  nuser_tasks++;
+    spin_unlock(&runq_lock);
   }
 
   this_cpu->cpu_task = task;

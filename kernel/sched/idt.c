@@ -231,10 +231,11 @@ void int_handler(struct int_frame *frame)
 	 */
 	assert(!(read_rflags() & FLAGS_IF));
 
+  if (xchg(&this_cpu->cpu_status, CPU_STARTED) == CPU_HALTED) {
 #ifdef USE_BIG_KERNEL_LOCK
-  if (xchg(&this_cpu->cpu_status, CPU_STARTED) == CPU_HALTED)
     spin_lock(&kernel_lock);
 #endif
+    }
 
   if ((frame->cs & 3) == 3) {
 		/* Interrupt from user mode. */

@@ -17,6 +17,8 @@
 
 #ifdef USE_BIG_KERNEL_LOCK
 extern struct spinlock kernel_lock;
+#else
+extern struct spinlock runq_lock;
 #endif
 
 void kmain(struct boot_info *boot_info)
@@ -60,9 +62,15 @@ void kmain(struct boot_info *boot_info)
 
 #ifdef USE_BIG_KERNEL_LOCK
 	spin_lock(&kernel_lock);
+#else
+	spin_lock(&runq_lock);
 #endif
 
 	boot_cpus();
+
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&runq_lock);
+#endif
 
 #if defined(TEST)
 	TASK_CREATE(TEST, TASK_TYPE_USER);
