@@ -16,6 +16,10 @@ enum {
 	SYS_fork,
 	SYS_getcpuid,
   SYS_exec,
+#ifdef BONUS_LAB6
+	SYS_sched_setaffinity,
+	SYS_sched_getaffinity,
+#endif
   NSYSCALLS,
 };
 
