@@ -535,10 +535,13 @@ void task_run(struct task *task)
   }
 
 	if (this_cpu->cpu_task && this_cpu->cpu_task != task) {
-	  spin_lock(&runq_lock);
+#ifdef USE_BIG_KERNEL_LOCK
 	  list_insert_after(&runq, &this_cpu->cpu_task->task_node);
 	  nuser_tasks++;
-    spin_unlock(&runq_lock);
+#else
+    list_insert_after(&this_cpu->runq, &this_cpu->cpu_task->task_node);
+    this_cpu->runq_len++;
+#endif
   }
 
   this_cpu->cpu_task = task;
