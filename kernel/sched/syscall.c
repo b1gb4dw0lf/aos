@@ -94,6 +94,11 @@ int sys_getcpuid() {
   return this_cpu->cpu_id;
 }
 
+int sched_setaffinity(pid_t pid, unsigned cpusetsize, cpu_set_t *mask) {
+}
+int sched_getaffinity(pid_t pid, unsigned cpusetsize, cpu_set_t *mask) {
+}
+
 /* Dispatches to the correct kernel function, passing the arguments. */
 int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
         uint64_t a4, uint64_t a5, uint64_t a6)
@@ -136,6 +141,10 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
       return sys_exec((char *) a1);
 	  case SYS_getcpuid:
 	    return sys_getcpuid();
+		case SYS_sched_setaffinity:
+			return sched_setaffinity();
+		case SYS_sched_getaffinity:
+			return sched_getaffinity();
     default:
 			return -ENOSYS;
 	}
