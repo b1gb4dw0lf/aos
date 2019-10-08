@@ -99,7 +99,10 @@ void sched_yield(void)
 	  // If current task has been killed by some other task
 	  if (this_cpu->cpu_task->task_pid == 0) {
       this_cpu->cpu_task = NULL;
+#ifndef USE_BIG_KERNEL_LOCK
+      spin_lock(&runq_lock);
 	    sched_halt();
+#endif
 	  }
 	  task_run(this_cpu->cpu_task);
 	}else {
