@@ -122,6 +122,7 @@ size_t count_total_free_pages(void)
     //Add rhs to free list
     list_insert_after(page_free_list + rhs->pp_order, &rhs->pp_node);
   }
+
   return lhs;
 }
 
@@ -198,6 +199,9 @@ struct page_info *buddy_merge(struct page_info *page)
  */
 struct page_info *buddy_find(size_t req_order)
 {
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&buddy_lock);
+#endif
   struct list *node;
   struct page_info *res;
   struct page_info *page;
@@ -208,14 +212,27 @@ struct page_info *buddy_find(size_t req_order)
 
       if(page->pp_free && order == req_order) {
         // Found a free page with the requested order
+#ifndef USE_BIG_KERNEL_LOCK
+        spin_unlock(&buddy_lock);
+#endif
+
         return page;
       } else if (order > req_order && page->pp_free){
         // We found a free page with a greater order so we need to split
-        return buddy_split(page, req_order);
+        page = buddy_split(page, req_order);
+
+#ifndef USE_BIG_KERNEL_LOCK
+        spin_unlock(&buddy_lock);
+#endif
+
+        return page;
       }
     }
   }
 
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&buddy_lock);
+#endif
   //this means no requested order page could be find, so we're going to icnr
   return NULL;
 }
@@ -237,6 +254,9 @@ struct page_info *buddy_find(size_t req_order)
  */
 struct page_info *page_alloc(int alloc_flags)
 {
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&buddy_lock);
+#endif
   struct page_info *page = alloc_flags & ALLOC_HUGE ?
                            buddy_find(BUDDY_2M_PAGE) :
                            buddy_find(BUDDY_4K_PAGE);
@@ -261,6 +281,9 @@ struct page_info *page_alloc(int alloc_flags)
     memset(page2kva(page), 0, page_size);
   }
 
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&buddy_lock);
+#endif
   return page;
 }
 
@@ -273,6 +296,9 @@ struct page_info *page_alloc(int alloc_flags)
  */
 void page_free(struct page_info *pp)
 {
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&buddy_lock);
+#endif
   struct page_info *res;
 
   // Make sure the page has no refs
@@ -296,6 +322,10 @@ void page_free(struct page_info *pp)
     res = buddy_merge(pp); // Merge page with buddies TODO implement this
     list_insert_after(page_free_list + res->pp_order, &res->pp_node); //Add node to free list
   }
+
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&buddy_lock);
+#endif
 }
 
 /*
@@ -304,9 +334,15 @@ void page_free(struct page_info *pp)
  */
 void page_decref(struct page_info *pp)
 {
-	if (--pp->pp_ref == 0) {
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&buddy_lock);
+#endif
+  if (--pp->pp_ref == 0) {
 		page_free(pp);
 	}
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&buddy_lock);
+#endif
 }
 
 static int in_page_range(void *p)
@@ -325,7 +361,10 @@ static void *update_ptr(void *p)
 
 void buddy_migrate(void)
 {
-	struct page_info *page;
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&buddy_lock);
+#endif
+  struct page_info *page;
 	struct list *node;
 	size_t i;
 
@@ -345,11 +384,17 @@ void buddy_migrate(void)
 	}
 
 	pages = (struct page_info *)KPAGES;
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&buddy_lock);
+#endif
 }
 
 int buddy_map_chunk(struct page_table *pml4, size_t index)
 {
-	struct page_info *page, *base;
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_lock(&buddy_lock);
+#endif
+  struct page_info *page, *base;
 	void *end;
 	size_t nblocks = (1 << (12 + BUDDY_MAX_ORDER - 1)) / PAGE_SIZE;
 	size_t nalloc = ROUNDUP(nblocks * sizeof *page, PAGE_SIZE) / PAGE_SIZE;
@@ -378,6 +423,9 @@ int buddy_map_chunk(struct page_table *pml4, size_t index)
 
 	npages = index + nblocks;
 
-	return 0;
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&buddy_lock);
+#endif
+  return 0;
 }
 
