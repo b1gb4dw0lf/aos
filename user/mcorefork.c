@@ -13,7 +13,8 @@ int main(int argc, char **argv)
 			break;
 		}
 
-		//sched_setaffinity(pid, 0, 2);
+		printf("set affinity\n");
+		sched_setaffinity(pid, 0, 1 << 1);
 	}
 
 	pid = getpid();

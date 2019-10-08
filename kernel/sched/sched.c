@@ -60,9 +60,19 @@ size_t get_from_parent(size_t max) {
     if (!node) {
       return i;
     };
+#ifdef BONUS_LAB6
+    struct task * task;
+    task = container_of(node, struct task, task_node);
+    if(task->affinity > 0 && (task->affinity & (1 << this_cpu->cpu_id)) == 0) {
+      list_insert_after(&runq, node);
+    } else {
+#endif
 
     list_insert_after(&this_cpu->nextq, node);
     this_cpu->nextq_len++;
+#ifdef BONUS_LAB6
+    }
+#endif
   }
 
   return i;
@@ -157,9 +167,9 @@ void sched_yield(void)
     task = container_of(node, struct task, task_node);
 
 #ifdef BONUS_LAB6
-    if(task->affinity != 0 && !(task->affinity & this_cpu->cpu_id)) {
+    if(task->affinity > 0 && (task->affinity & (1 << this_cpu->cpu_id)) == 0) {
       spin_lock(&runq_lock);
-      list_push(&runq, node);
+      list_insert_after(&runq, node);
       spin_unlock(&runq_lock);
       sched_yield();
     }

@@ -96,6 +96,10 @@ int sys_getcpuid() {
 #ifdef BONUS_LAB6
 int sched_setaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask) {
 	struct task *task = pid2task(pid, 1);
+	if(mask > NCPUS) {
+		cprintf("mask > NCPUS, %d > %d\n", mask, NCPUS);
+		return -1;
+	}
 	if(!task) return -1;
 	spin_lock(&task->task_lock);
 	task->affinity = mask; 
