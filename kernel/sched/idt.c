@@ -214,7 +214,7 @@ void int_dispatch(struct int_frame *frame)
 	if (frame->cs == GDT_KCODE) {
 		panic("unhandled interrupt in kernel");
 	} else {
-		task_destroy(cur_task);
+		task_destroy(this_cpu->cpu_task);
 		return;
 	}
 }

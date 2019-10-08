@@ -167,16 +167,16 @@ pid_t sys_fork(void)
 {
 	/* LAB 5: your code here. */
 	struct task * clone;
-	clone = task_clone(cur_task);
+	clone = task_clone(this_cpu->cpu_task);
 	clone->task_frame.rax = 0;
-	cur_task->task_frame.rax = clone->task_pid;
+	this_cpu->cpu_task->task_frame.rax = clone->task_pid;
 
 	return  clone->task_pid;
 }
 
 int sys_exec(const char * file_name) {
 
-  assert_user_mem(cur_task, (void *) file_name, 1, 0);
+  assert_user_mem(this_cpu->cpu_task, (void *) file_name, 1, 0);
 
   // Return if no binary
   if (!file_name) return -1;
@@ -188,16 +188,16 @@ int sys_exec(const char * file_name) {
   struct vma * old_vma;
 
   // Unmap all user things
-  list_foreach_safe(&cur_task->task_mmap, node, next) {
+  list_foreach_safe(&this_cpu->cpu_task->task_mmap, node, next) {
     old_vma = container_of(node, struct vma, vm_mmap);
-    unmap_vma_range(cur_task, old_vma->vm_base, old_vma->vm_end - old_vma->vm_base);
+    unmap_vma_range(this_cpu->cpu_task, old_vma->vm_base, old_vma->vm_end - old_vma->vm_base);
   }
 
   // Load new image into task
-  task_load_elf(cur_task, (uint8_t *)binary);
+  task_load_elf(this_cpu->cpu_task, (uint8_t *)binary);
 
   // Remove task from runq
-  list_remove(&cur_task->task_node);
+  list_remove(&this_cpu->cpu_task->task_node);
   // If context switch will done this task will be saved to runq
   // Otherwise, this same task will be called again
   sched_yield();
