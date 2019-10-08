@@ -49,8 +49,6 @@ void display_currents(void) {
 }
 
 size_t get_from_parent(size_t max) {
-  cprintf("Getting %d tasks to parent\n", max);
-
   struct list * node;
   size_t i = 0;
 
@@ -70,8 +68,6 @@ size_t get_from_parent(size_t max) {
 }
 
 size_t pass_to_parent(size_t max) {
-  cprintf("Passing %d tasks to parent\n", max);
-
   struct list * node;
   size_t i = 0;
 
@@ -104,8 +100,8 @@ void sched_yield(void)
   func_runq = &this_cpu->runq;
 
   spin_lock(&runq_lock);
-  if (this_cpu->runq_len > 3) {
-    pass_to_parent(this_cpu->runq_len - 3);
+  if (this_cpu->runq_len > 1) {
+    pass_to_parent(this_cpu->runq_len - 2);
   }
   spin_unlock(&runq_lock);
 
