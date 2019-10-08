@@ -15,6 +15,12 @@
 #include <kernel/sched.h>
 #include <kernel/tests.h>
 
+#ifdef USE_BIG_KERNEL_LOCK
+extern struct spinlock kernel_lock;
+#else
+extern struct spinlock runq_lock;
+#endif
+
 void kmain(struct boot_info *boot_info)
 {
 	extern char edata[], end[];
@@ -40,7 +46,7 @@ void kmain(struct boot_info *boot_info)
 	mem_init(boot_info);
 
 	/* Set up the slab allocator. */
-	kmem_init();
+	kmem_init_mp();
 
 	/* Set up the interrupt controller and timers */
 	pic_init();
@@ -52,6 +58,19 @@ void kmain(struct boot_info *boot_info)
 	/* Set up the tasks. */
 	task_init();
 	sched_init();
+	sched_init_mp();
+
+#ifdef USE_BIG_KERNEL_LOCK
+	spin_lock(&kernel_lock);
+#else
+	spin_lock(&runq_lock);
+#endif
+
+	boot_cpus();
+
+#ifndef USE_BIG_KERNEL_LOCK
+  spin_unlock(&runq_lock);
+#endif
 
 #if defined(TEST)
 	TASK_CREATE(TEST, TASK_TYPE_USER);

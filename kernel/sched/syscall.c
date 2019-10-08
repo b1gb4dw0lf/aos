@@ -33,6 +33,7 @@ void syscall_init(void)
 void syscall_init_mp(void)
 {
 	/* LAB 6: your code here. */
+	syscall_init();
 }
 
 /*
@@ -45,7 +46,7 @@ static void sys_cputs(const char *s, size_t len)
 	/* Check that the user has permission to read memory [s, s+len).
 	 * Destroy the environment if not. */
 	/* LAB 3: your code here. */
-	assert_user_mem(cur_task, (void *) s, len, 0);
+	assert_user_mem(this_cpu->cpu_task, (void *) s, len, 0);
 
 	/* Print the string supplied by the user. */
 	cprintf("%.*s", len, s);
@@ -63,7 +64,7 @@ static int sys_cgetc(void)
 /* Returns the PID of the current task. */
 static pid_t sys_getpid(void)
 {
-	return cur_task->task_pid;
+	return this_cpu->cpu_task->task_pid;
 }
 
 static int sys_kill(pid_t pid)
@@ -82,11 +83,15 @@ static int sys_kill(pid_t pid)
 	if (pid == 0) {
     cprintf("[PID %5u] Exiting gracefully\n", task->task_pid);
 	} else {
-    cprintf("[PID %5u] Reaping task with PID %u\n", cur_task->task_pid, task->task_pid);
+    cprintf("[PID %5u] Reaping task with PID %u\n", this_cpu->cpu_task->task_pid, task->task_pid);
   }
 	task_destroy(task);
 
 	return 0;
+}
+
+int sys_getcpuid() {
+  return this_cpu->cpu_id;
 }
 
 /* Dispatches to the correct kernel function, passing the arguments. */
@@ -129,6 +134,8 @@ int64_t syscall(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
       return sys_waitpid((pid_t) a1, (int *) a2, (int) a3);
     case SYS_exec:
       return sys_exec((char *) a1);
+	  case SYS_getcpuid:
+	    return sys_getcpuid();
     default:
 			return -ENOSYS;
 	}
@@ -141,10 +148,10 @@ void syscall_handler(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	struct int_frame *frame;
 
 	/* Syscall from user mode. */
-	assert(cur_task);
+	assert(this_cpu->cpu_task);
 
 	/* Avoid using the frame on the stack. */
-	frame = &cur_task->task_frame;
+	frame = &this_cpu->cpu_task->task_frame;
 
 	/* Issue the syscall. */
 // 	write_msr(MSR_KERNEL_GS_BASE, (uintptr_t) this_cpu);//should maybe be this_cpu->cpu_tss->rsp[0] ?
@@ -154,7 +161,7 @@ void syscall_handler(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	#ifdef LAB3_SYSCALL
 	  sysret64(frame);
 	#else
-		task_run(cur_task);
+		task_run(this_cpu->cpu_task);
 	#endif
 }
 

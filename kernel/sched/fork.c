@@ -40,6 +40,8 @@ void increase_page_refs(struct page_table *pml4, void *va, size_t size,
   walk_page_range(pml4, va, (void *)((uintptr_t)va + size), &walker);
 }
 
+extern struct spinlock runq_lock;
+
 /**
  * This is just a deep copy that creates private ptables for all 4 levels
  * The leaves will point to same physical pages, only the tables will be
@@ -106,11 +108,13 @@ struct task *task_clone(struct task *task)
   list_init(&clone->task_children);
   list_init(&clone->task_zombies);
 
+  spin_lock(&task->task_lock);
   list_insert_after(&task->task_children, &clone->task_child);
 
   /* setup task */
 	clone->task_type = task->task_type;
 	/* copy register state */
+
 	memcpy(&clone->task_frame, &task->task_frame, sizeof(task->task_frame));
 
   /* copy page tables */
@@ -158,7 +162,9 @@ struct task *task_clone(struct task *task)
 	}
 
 	/* add process to runqueue */
-  list_insert_after(&runq, &clone->task_node);
+  list_insert_after(&this_cpu->nextq, &clone->task_node);
+  this_cpu->nextq_len++;
+  spin_unlock(&task->task_lock);
 
 	return clone;
 }
@@ -167,16 +173,16 @@ pid_t sys_fork(void)
 {
 	/* LAB 5: your code here. */
 	struct task * clone;
-	clone = task_clone(cur_task);
+	clone = task_clone(this_cpu->cpu_task);
 	clone->task_frame.rax = 0;
-	cur_task->task_frame.rax = clone->task_pid;
+	this_cpu->cpu_task->task_frame.rax = clone->task_pid;
 
 	return  clone->task_pid;
 }
 
 int sys_exec(const char * file_name) {
 
-  assert_user_mem(cur_task, (void *) file_name, 1, 0);
+  assert_user_mem(this_cpu->cpu_task, (void *) file_name, 1, 0);
 
   // Return if no binary
   if (!file_name) return -1;
@@ -188,16 +194,16 @@ int sys_exec(const char * file_name) {
   struct vma * old_vma;
 
   // Unmap all user things
-  list_foreach_safe(&cur_task->task_mmap, node, next) {
+  list_foreach_safe(&this_cpu->cpu_task->task_mmap, node, next) {
     old_vma = container_of(node, struct vma, vm_mmap);
-    unmap_vma_range(cur_task, old_vma->vm_base, old_vma->vm_end - old_vma->vm_base);
+    unmap_vma_range(this_cpu->cpu_task, old_vma->vm_base, old_vma->vm_end - old_vma->vm_base);
   }
 
   // Load new image into task
-  task_load_elf(cur_task, (uint8_t *)binary);
+  task_load_elf(this_cpu->cpu_task, (uint8_t *)binary);
 
   // Remove task from runq
-  list_remove(&cur_task->task_node);
+  list_remove(&this_cpu->cpu_task->task_node);
   // If context switch will done this task will be saved to runq
   // Otherwise, this same task will be called again
   sched_yield();

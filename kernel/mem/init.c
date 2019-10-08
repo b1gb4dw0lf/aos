@@ -11,6 +11,8 @@
 
 extern struct list page_free_list[];
 
+void mem_init_mp(void);
+
 /* The kernel's initial PML4. */
 struct page_table *kernel_pml4;
 
@@ -141,6 +143,7 @@ void mem_init(struct boot_info *boot_info)
 
 	/* Check the buddy allocator. */
 	lab2_check_buddy(boot_info);
+  mem_init_mp();
 }
 
 void mem_init_mp(void)
@@ -149,23 +152,13 @@ void mem_init_mp(void)
 	 * page.
 	 */
 
-  // Bootstrap core's stack is at KSTACK_TOP  - KSTACK_SIZE
-  //1 Core 0 - TOP - KSIZE
-  //2 Guard  - TOP - KSIZE - PAGE
-  //3 Core 1 - TOP - 2 KSIZE - PAGE
-  //4 Guard  - TOP - 2 KSIZE - 2 PAGE
-  //5 Core 2 - TOP - 3 KSIZE - 2 PAGE
-  //6 Guard  - TOP - 3 KSIZE - 3 PAGE
 
-  populate_region(kernel_pml4, (void *)(KSTACK_TOP - KSTACK_SIZE - PAGE_SIZE),
-                  KSTACK_SIZE, PAGE_PRESENT | PAGE_NO_EXEC);
-
-  for (int i = 2; i < NCPUS + 1; ++i) {
-    populate_region(kernel_pml4, (void *)(KSTACK_TOP - (i * KSTACK_SIZE) - (i-1) * PAGE_SIZE),
+  uintptr_t va;
+  for (size_t i = 0; i < NCPUS; ++i) {
+    va = KSTACK_TOP - i * (KSTACK_SIZE + PAGE_SIZE);
+    populate_region(kernel_pml4, (void *)(va - KSTACK_SIZE),
         KSTACK_SIZE, PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
-
-    populate_region(kernel_pml4, (void *)(KSTACK_TOP - (i * (KSTACK_SIZE + PAGE_SIZE))),
-                   PAGE_SIZE, PAGE_PRESENT | PAGE_NO_EXEC);
+    cpus[i].cpu_tss.rsp[0] = va;
   }
 
 	/* LAB 6: your code here. */

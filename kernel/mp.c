@@ -10,6 +10,9 @@
  * pointer that should be loaded by boot_ap().
  */
 void *mpentry_kstack;
+#ifdef USE_BIG_KERNEL_LOCK
+extern struct spinlock kernel_lock;
+#endif
 
 void boot_cpus(void)
 {
@@ -54,18 +57,27 @@ void mp_main(void)
 
 	/* LAB 6: your code here. */
 	/* Initialize the local APIC. */
+	lapic_init();
+
 	/* Set up segmentation, interrupts, system call support. */
+  gdt_init_mp();
+  idt_init_mp();
+  syscall_init_mp();
+
 	/* Set up the per-CPU slab allocator. */
+	kmem_init_mp();
+
 	/* Set up the per-CPU scheduler. */
+  sched_init_mp();
 
 	/* Notify the main CPU that we started up. */
 	xchg(&this_cpu->cpu_status, CPU_STARTED);
 
 	/* Schedule tasks. */
-	/* LAB 6: remove this code when you are ready */
-	asm volatile(
-		"cli\n"
-		"hlt\n");
-	sched_yield();
+#ifdef USE_BIG_KERNEL_LOCK
+	spin_lock(&kernel_lock);
+#endif
+
+  sched_yield();
 }
 

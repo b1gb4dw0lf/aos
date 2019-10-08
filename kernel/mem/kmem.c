@@ -25,7 +25,21 @@ int kmem_init(void)
 int kmem_init_mp(void)
 {
 	/* LAB 6: your code here. */
-	return 0;
+  struct slab *slab;
+  size_t obj_size;
+  size_t i;
+
+  struct kmem_cache * cache = &this_cpu->kmem;
+
+  cache->_nslabs = 32;
+
+  for (i = 0; i < cache->_nslabs; ++i) {
+    slab = cache->_slabs + i;
+    obj_size = (i + 1) * SLAB_ALIGN;
+    slab_setup(slab, obj_size);
+  }
+
+  return 0;
 }
 
 /* Allocates a chunk of memory of size bytes.

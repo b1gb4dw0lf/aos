@@ -34,5 +34,11 @@ void gdt_init(void)
 void gdt_init_mp(void)
 {
 	/* LAB 6: your code here. */
+  this_cpu->cpu_tss.rsp[0] = KSTACK_TOP - this_cpu->cpu_id * (KSTACK_SIZE + PAGE_SIZE);
+
+  set_tss_entry((struct tss_entry *)(gdt_entries + ((GDT_TSS0 + this_cpu->cpu_id) >> 3)),
+                &this_cpu->cpu_tss);
+  load_gdt(&gdtr, GDT_KCODE, GDT_KDATA);
+  load_task_sel(GDT_TSS0 + this_cpu->cpu_id);
 }
 

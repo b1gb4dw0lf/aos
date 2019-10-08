@@ -15,6 +15,10 @@
 #include <kernel/acpi.h>
 #include <kernel/sched.h>
 
+#ifdef USE_BIG_KERNEL_LOCK
+extern struct spinlock kernel_lock;
+#endif
+
 static const char *int_names[256] = {
 	[INT_DIVIDE] = "Divide-by-Zero Error Exception (#DE)",
 	[INT_DEBUG] = "Debug (#DB)",
@@ -170,17 +174,14 @@ void idt_init(void)
 	for (int i = 0; i < 15; i++) {
 		set_idt_entry(&idtr.entries[IRQ_OFFSET + i], isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)),GDT_KCODE);
 	}
-//	set_idt_entry(&idtr.entries[IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
-//	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_TIMER],         isr32, (IDT_PRESENT | IDT_INT_GATE32 | IDT_PRIVL(0x3)), GDT_KCODE);
-	/*set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_KBD],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
-	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SERIAL],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);
-	set_idt_entry(&idtr.entries[IRQ_OFFSET + IRQ_SPURIOUS],         irqtimer, (IDT_PRESENT | IDT_INT_GATE32), GDT_KCODE);*/
+
 	load_idt(&idtr);
 }
 
 void idt_init_mp(void)
 {
 	/* LAB 6: your code here. */
+	idt_init();
 }
 
 void int_dispatch(struct int_frame *frame)
@@ -213,7 +214,7 @@ void int_dispatch(struct int_frame *frame)
 	if (frame->cs == GDT_KCODE) {
 		panic("unhandled interrupt in kernel");
 	} else {
-		task_destroy(cur_task);
+		task_destroy(this_cpu->cpu_task);
 		return;
 	}
 }
@@ -230,24 +231,35 @@ void int_handler(struct int_frame *frame)
 	 */
 	assert(!(read_rflags() & FLAGS_IF));
 
-	if ((frame->cs & 3) == 3) {
+  if (xchg(&this_cpu->cpu_status, CPU_STARTED) == CPU_HALTED) {
+#ifdef USE_BIG_KERNEL_LOCK
+    spin_lock(&kernel_lock);
+#endif
+    }
+
+  if ((frame->cs & 3) == 3) {
 		/* Interrupt from user mode. */
-		assert(cur_task);
+		assert(this_cpu->cpu_task);
+
+#ifdef USE_BIG_KERNEL_LOCK
+    // Get lock from user to kern
+    spin_lock(&kernel_lock);
+#endif
 
 		/* Copy interrupt frame (which is currently on the stack) into
 		 * 'cur_task->task_frame', so that running the task will restart at
 		 * the point of interrupt. */
-		cur_task->task_frame = *frame;
+    this_cpu->cpu_task->task_frame = *frame;
 
 		/* Avoid using the frame on the stack. */
-		frame = &cur_task->task_frame;
-	}
+		frame = &this_cpu->cpu_task->task_frame;
+  }
 
-	/* Dispatch based on the type of interrupt that occurred. */
+  /* Dispatch based on the type of interrupt that occurred. */
 	int_dispatch(frame);
 
 	/* Return to the current task, which should be running. */
-	task_run(cur_task);
+	task_run(this_cpu->cpu_task);
 }
 
 void page_fault_handler(struct int_frame *frame)
@@ -269,14 +281,14 @@ void page_fault_handler(struct int_frame *frame)
 	 * page fault has happened in user mode.
 	 */
 
-	if (task_page_fault_handler(cur_task, fault_va, perm) == 0) {
-	  task_run(cur_task);
+	if (task_page_fault_handler(this_cpu->cpu_task, fault_va, perm) == 0) {
+	  task_run(this_cpu->cpu_task);
 	}
 
 	/* Destroy the task that caused the fault. */
 	cprintf("[PID %5u] user fault va %p ip %p\n",
-		cur_task->task_pid, fault_va, frame->rip);
+          this_cpu->cpu_task->task_pid, fault_va, frame->rip);
 	print_int_frame(frame);
-	task_destroy(cur_task);
+	task_destroy(this_cpu->cpu_task);
 }
 
