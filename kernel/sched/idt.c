@@ -199,12 +199,6 @@ void int_dispatch(struct int_frame *frame)
 			return;
 		case IRQ_TIMER:
 		  lapic_eoi();
-
-		  if (this_cpu->cpu_status == CPU_HALTED) {
-		    this_cpu->cpu_status = CPU_STARTED;
-		    spin_lock(&kernel_lock);
-		  }
-
 		  sched_yield();
     case INT_SYSCALL:
 			frame->rax = (uint64_t)syscall(frame->rdi, frame->rsi, frame->rdx, frame->rcx, frame->r8, frame->r9, frame->rbp); //frame->rbp = 7th
@@ -235,9 +229,15 @@ void int_handler(struct int_frame *frame)
 	 */
 	assert(!(read_rflags() & FLAGS_IF));
 
-	if ((frame->cs & 3) == 3) {
+  if (xchg(&this_cpu->cpu_status, CPU_STARTED) == CPU_HALTED)
+    spin_lock(&kernel_lock);
+
+  if ((frame->cs & 3) == 3) {
 		/* Interrupt from user mode. */
 		assert(cur_task);
+
+    // Get lock from user to kern
+    spin_lock(&kernel_lock);
 
 		/* Copy interrupt frame (which is currently on the stack) into
 		 * 'cur_task->task_frame', so that running the task will restart at
@@ -246,9 +246,6 @@ void int_handler(struct int_frame *frame)
 
 		/* Avoid using the frame on the stack. */
 		frame = &cur_task->task_frame;
-
-		// Get lock from user to kern
-    spin_lock(&kernel_lock);
   }
 
   /* Dispatch based on the type of interrupt that occurred. */

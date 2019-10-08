@@ -93,6 +93,7 @@ void sched_halt()
   "push $0\n"
   "push $0\n"
   "sti\n"
+  "1:\n"
   "hlt\n" :: "a"(this_cpu->cpu_tss.rsp[0]));
 }
 
