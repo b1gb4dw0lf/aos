@@ -40,6 +40,8 @@ void increase_page_refs(struct page_table *pml4, void *va, size_t size,
   walk_page_range(pml4, va, (void *)((uintptr_t)va + size), &walker);
 }
 
+extern struct spinlock runq_lock;
+
 /**
  * This is just a deep copy that creates private ptables for all 4 levels
  * The leaves will point to same physical pages, only the tables will be
@@ -106,11 +108,13 @@ struct task *task_clone(struct task *task)
   list_init(&clone->task_children);
   list_init(&clone->task_zombies);
 
+  spin_lock(&task->task_lock);
   list_insert_after(&task->task_children, &clone->task_child);
 
   /* setup task */
 	clone->task_type = task->task_type;
 	/* copy register state */
+
 	memcpy(&clone->task_frame, &task->task_frame, sizeof(task->task_frame));
 
   /* copy page tables */
@@ -158,7 +162,10 @@ struct task *task_clone(struct task *task)
 	}
 
 	/* add process to runqueue */
-  list_insert_after(&runq, &clone->task_node);
+	spin_lock(&runq_lock);
+  list_insert_after(&this_cpu->runq, &clone->task_node);
+  spin_unlock(&runq_lock);
+  spin_unlock(&task->task_lock);
 
 	return clone;
 }
