@@ -8,13 +8,9 @@ int main(int argc, char **argv)
 
 	/* Fork a bunch of processes. */
 	for (i = 0; i < 16; ++i) {
-		pid = fork();
-		if (pid == 0) {
+		if (fork() == 0) {
 			break;
 		}
-
-		printf("set affinity\n");
-		sched_setaffinity(pid, 0, 1 << 1);
 	}
 
 	pid = getpid();

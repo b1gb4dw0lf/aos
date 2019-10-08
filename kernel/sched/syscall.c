@@ -97,22 +97,29 @@ int sys_getcpuid() {
 int sched_setaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask) {
 	struct task *task = pid2task(pid, 1);
 	if(mask > NCPUS) {
-		cprintf("mask > NCPUS, %d > %d\n", mask, NCPUS);
 		return -1;
 	}
 	if(!task) return -1;
+#ifndef USE_BIG_KERNEL_LOCK
 	spin_lock(&task->task_lock);
+#endif
 	task->affinity = mask; 
+#ifndef USE_BIG_KERNEL_LOCK
 	spin_unlock(&task->task_lock);
+#endif
 	return 0;
 }
 
 int sched_getaffinity(pid_t pid, uint64_t cpusetsize, uint64_t mask) {
 	struct task *task = pid2task(pid, 1);
 	if(!task) return -1;
+#ifndef USE_BIG_KERNEL_LOCK
 	spin_lock(&task->task_lock);
+#endif
 	mask = task->affinity;
+#ifndef USE_BIG_KERNEL_LOCK
 	spin_unlock(&task->task_lock);
+#endif
 	return 0;
 }
 #endif

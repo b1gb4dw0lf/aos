@@ -168,9 +168,13 @@ void sched_yield(void)
 
 #ifdef BONUS_LAB6
     if(task->affinity > 0 && (task->affinity & (1 << this_cpu->cpu_id)) == 0) {
+#ifndef USE_BIG_KERNEL_LOCK
       spin_lock(&runq_lock);
+#endif
       list_insert_after(&runq, node);
+#ifndef USE_BIG_KERNEL_LOCK
       spin_unlock(&runq_lock);
+#endif
       sched_yield();
     }
 #endif
