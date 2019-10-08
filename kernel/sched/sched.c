@@ -36,6 +36,15 @@ void sched_init_mp(void)
 	this_cpu->runq_len = 0;
 }
 
+void display_currents(void) {
+  cprintf("Currents:\n");
+  for (int i = 0; i < ncpus; ++i) {
+    if (cpus[i].cpu_task) {
+      cprintf("CPU %d - PID %d\n", cpus[i].cpu_id, cpus[i].cpu_task->task_pid);
+    }
+  }
+}
+
 /**
  * This will be either called from syscalls or init sides
  * Caller needs to acquire a lock
@@ -46,13 +55,21 @@ void sched_yield(void)
 	struct list *node, *temp;
 	struct task *task, *temp_task;
 
-	if(list_is_empty(&runq) && cur_task == NULL) {
-		sched_halt();
-	} else if (list_is_empty(&runq) && cur_task) {
-    task_run(cur_task);
+	if(list_is_empty(&runq) && this_cpu->cpu_task == NULL) {
+	  sched_halt();
+	} else if (list_is_empty(&runq) && this_cpu->cpu_task) {
+
+	  // If current task has been killed by some other task
+	  if (this_cpu->cpu_task->task_pid == 0) {
+      this_cpu->cpu_task = NULL;
+	    sched_halt();
+	  }
+
+	  task_run(this_cpu->cpu_task);
 	}else {
     node = list_pop_left(&runq);
     task = container_of(node, struct task, task_node);
+    task->task_cpunum = this_cpu->cpu_id;
     nuser_tasks--;
 		task_run(task);
 	}
@@ -70,23 +87,21 @@ void sched_halt()
 {
 
   xchg(&this_cpu->cpu_status, CPU_HALTED);
+  spin_unlock(&kernel_lock);
 
   if (list_is_empty(&runq) && boot_cpu->cpu_status == CPU_HALTED) {
     if (this_cpu->cpu_id == boot_cpu->cpu_id && !check_running()) {
-      spin_unlock(&kernel_lock);
       asm volatile("cli\n");
       while (1) {
         monitor(NULL);
       }
     } else if (this_cpu->cpu_id != boot_cpu->cpu_id) {
-      spin_unlock(&kernel_lock);
       asm volatile(
         "cli\n"
         "hlt\n");
     }
   }
 
-  spin_unlock(&kernel_lock);
   asm volatile(
   "mov $0, %%rbp\n"
   "mov %0, %%rsp\n"

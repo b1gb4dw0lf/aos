@@ -169,7 +169,7 @@ int mon_vmainfo(int argc, char **argv, struct int_frame *frame)
 	pid_t pid;
 
 	if (argc < 2) {
-		show_vmas(cur_task);
+		show_vmas(this_cpu->cpu_task);
 		return 0;
 	}
 

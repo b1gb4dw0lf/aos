@@ -197,7 +197,7 @@ struct task *task_alloc(pid_t ppid)
   task->task_frame.rflags |= FLAGS_IF;
 
   cprintf("[PID %5u] New task with PID %u\n",
-	        cur_task ? cur_task->task_pid : 0, task->task_pid);
+          this_cpu->cpu_task ? this_cpu->cpu_task->task_pid : 0, task->task_pid);
 
 	return task;
 }
@@ -228,7 +228,7 @@ struct task * task_alloc_kernel(pid_t ppid) {
 
 
   cprintf("[PID %5u] New task with PID %u\n",
-          cur_task ? cur_task->task_pid : 0, task->task_pid);
+          this_cpu->cpu_task ? this_cpu->cpu_task->task_pid : 0, task->task_pid);
 
   return task;
 }
@@ -374,7 +374,9 @@ void handle_waiting(struct task *parent, struct task *child) {
 
     pid_t return_val = child->task_pid;
     child->task_status = TASK_DYING;
+
     task_free(child);
+
     parent->task_status = TASK_RUNNABLE;
     parent->task_frame.rax = return_val;
 
@@ -408,8 +410,8 @@ void task_free(struct task *task)
     task->task_status = TASK_DYING;
     list_insert_after(&waiting->task_zombies, &task->task_node);
 
-    if (task->task_pid == cur_task->task_pid) {
-      cur_task = NULL;
+    if (task == this_cpu->cpu_task) {
+      this_cpu->cpu_task = NULL;
     }
 
     sched_yield();
@@ -433,7 +435,7 @@ void task_free(struct task *task)
     }
   }
 
-  if (task == cur_task) {
+  if (task == this_cpu->cpu_task) {
 		load_pml4((struct page_table *)PADDR(kernel_pml4));
 	}
 
@@ -452,11 +454,11 @@ void task_free(struct task *task)
   if (task->task_ppid != 0) list_remove(&task->task_child);
 
   /* Note the task's demise. */
-  cprintf("[PID %5u] Freed task with PID %d\n", cur_task ? cur_task->task_pid : 0,
+  cprintf("[PID %5u] Freed task with PID %d\n", this_cpu->cpu_task ? this_cpu->cpu_task->task_pid : 0,
           task->task_pid);
 
-  if (cur_task->task_pid == task->task_pid) {
-    cur_task = NULL;
+  if (this_cpu->cpu_task == task) {
+    this_cpu->cpu_task = NULL;
   }
 
   /* Free the task. */
@@ -524,21 +526,20 @@ void task_run(struct task *task)
 	 *  e->task_frame to sensible values.
 	 */
 
-	if (cur_task) {
-    if (cur_task->task_status == TASK_RUNNING) {
-      cur_task->task_status = TASK_RUNNABLE;
+	if (this_cpu->cpu_task) {
+    if (this_cpu->cpu_task->task_status == TASK_RUNNING) {
+      this_cpu->cpu_task->task_status = TASK_RUNNABLE;
     }
   }
 
-	if (cur_task && cur_task->task_pid != task->task_pid) {
-	  cprintf("PID %d inserted\n", cur_task->task_pid);
-	  list_insert_after(&runq, &cur_task->task_node);
+	if (this_cpu->cpu_task && this_cpu->cpu_task != task) {
+	  list_insert_after(&runq, &this_cpu->cpu_task->task_node);
 	  nuser_tasks++;
   }
 
-  cur_task = task;
-  cur_task->task_status = TASK_RUNNING;
-  cur_task->task_runs++;
+  this_cpu->cpu_task = task;
+  this_cpu->cpu_task->task_status = TASK_RUNNING;
+  this_cpu->cpu_task->task_runs++;
   load_pml4((struct page_table *) PADDR(task->task_pml4));
 
   spin_unlock(&kernel_lock);
