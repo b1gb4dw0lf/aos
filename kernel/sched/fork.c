@@ -108,7 +108,9 @@ struct task *task_clone(struct task *task)
   list_init(&clone->task_children);
   list_init(&clone->task_zombies);
 
+#ifndef USE_BIG_KERNEL_LOCK
   spin_lock(&task->task_lock);
+#endif
   list_insert_after(&task->task_children, &clone->task_child);
 
   /* setup task */
@@ -162,9 +164,14 @@ struct task *task_clone(struct task *task)
 	}
 
 	/* add process to runqueue */
+
+#ifndef USE_BIG_KERNEL_LOCK
   list_insert_after(&this_cpu->nextq, &clone->task_node);
   this_cpu->nextq_len++;
   spin_unlock(&task->task_lock);
+#else
+  list_insert_after(&runq, &clone->task_node);
+#endif
 
 	return clone;
 }
