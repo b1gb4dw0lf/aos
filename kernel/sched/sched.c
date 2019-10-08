@@ -49,8 +49,11 @@ void display_currents(void) {
 }
 
 size_t get_from_parent(size_t max) {
+  cprintf("Getting %d tasks to parent\n", max);
+
   struct list * node;
   size_t i = 0;
+
   for (i = 0; i < max; ++i) {
     node = list_pop_left(&runq);
 
@@ -58,8 +61,30 @@ size_t get_from_parent(size_t max) {
       return i;
     };
 
+    nuser_tasks--;
     list_insert_after(&this_cpu->runq, node);
     this_cpu->runq_len++;
+  }
+
+  return i;
+}
+
+size_t pass_to_parent(size_t max) {
+  cprintf("Passing %d tasks to parent\n", max);
+
+  struct list * node;
+  size_t i = 0;
+
+  for (i = 0; i < max; ++i) {
+    node = list_pop_left(&this_cpu->runq);
+
+    if (!node) {
+      return i;
+    };
+
+    this_cpu->runq_len--;
+    list_insert_after(&runq, node);
+    nuser_tasks++;
   }
 
   return i;
@@ -77,6 +102,13 @@ void sched_yield(void)
 
 #ifndef USE_BIG_KERNEL_LOCK
   func_runq = &this_cpu->runq;
+
+  spin_lock(&runq_lock);
+  if (this_cpu->runq_len > 3) {
+    pass_to_parent(this_cpu->runq_len - 3);
+  }
+  spin_unlock(&runq_lock);
+
 #else
   func_runq = &runq;
 #endif
