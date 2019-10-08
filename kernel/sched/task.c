@@ -542,7 +542,9 @@ void task_run(struct task *task)
   this_cpu->cpu_task->task_runs++;
   load_pml4((struct page_table *) PADDR(task->task_pml4));
 
+#ifdef USE_BIG_KERNEL_LOCK
   spin_unlock(&kernel_lock);
+#endif
 
   task_pop_frame(&task->task_frame);
 

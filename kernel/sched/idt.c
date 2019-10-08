@@ -15,7 +15,9 @@
 #include <kernel/acpi.h>
 #include <kernel/sched.h>
 
+#ifdef USE_BIG_KERNEL_LOCK
 extern struct spinlock kernel_lock;
+#endif
 
 static const char *int_names[256] = {
 	[INT_DIVIDE] = "Divide-by-Zero Error Exception (#DE)",
@@ -229,15 +231,19 @@ void int_handler(struct int_frame *frame)
 	 */
 	assert(!(read_rflags() & FLAGS_IF));
 
+#ifdef USE_BIG_KERNEL_LOCK
   if (xchg(&this_cpu->cpu_status, CPU_STARTED) == CPU_HALTED)
     spin_lock(&kernel_lock);
+#endif
 
   if ((frame->cs & 3) == 3) {
 		/* Interrupt from user mode. */
 		assert(this_cpu->cpu_task);
 
+#ifdef USE_BIG_KERNEL_LOCK
     // Get lock from user to kern
     spin_lock(&kernel_lock);
+#endif
 
 		/* Copy interrupt frame (which is currently on the stack) into
 		 * 'cur_task->task_frame', so that running the task will restart at

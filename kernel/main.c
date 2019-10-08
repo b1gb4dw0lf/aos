@@ -15,7 +15,9 @@
 #include <kernel/sched.h>
 #include <kernel/tests.h>
 
+#ifdef USE_BIG_KERNEL_LOCK
 extern struct spinlock kernel_lock;
+#endif
 
 void kmain(struct boot_info *boot_info)
 {
@@ -56,7 +58,9 @@ void kmain(struct boot_info *boot_info)
 	sched_init();
 	sched_init_mp();
 
+#ifdef USE_BIG_KERNEL_LOCK
 	spin_lock(&kernel_lock);
+#endif
 
 	boot_cpus();
 

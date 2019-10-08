@@ -22,7 +22,9 @@ struct spinlock runq_lock = {
 
 extern size_t nuser_tasks;
 
+#ifdef USE_BIG_KERNEL_LOCK
 extern struct spinlock kernel_lock;
+#endif
 
 void sched_init(void)
 {
@@ -87,7 +89,10 @@ void sched_halt()
 {
 
   xchg(&this_cpu->cpu_status, CPU_HALTED);
+
+#ifdef USE_BIG_KERNEL_LOCK
   spin_unlock(&kernel_lock);
+#endif
 
   if (list_is_empty(&runq) && boot_cpu->cpu_status == CPU_HALTED) {
     if (this_cpu->cpu_id == boot_cpu->cpu_id && !check_running()) {

@@ -10,7 +10,9 @@
  * pointer that should be loaded by boot_ap().
  */
 void *mpentry_kstack;
+#ifdef USE_BIG_KERNEL_LOCK
 extern struct spinlock kernel_lock;
+#endif
 
 void boot_cpus(void)
 {
@@ -72,7 +74,9 @@ void mp_main(void)
 	xchg(&this_cpu->cpu_status, CPU_STARTED);
 
 	/* Schedule tasks. */
-  spin_lock(&kernel_lock);
+#ifdef USE_BIG_KERNEL_LOCK
+	spin_lock(&kernel_lock);
+#endif
 
   sched_yield();
 }
