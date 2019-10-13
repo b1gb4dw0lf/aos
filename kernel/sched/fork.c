@@ -166,8 +166,9 @@ struct task *task_clone(struct task *task)
 	/* add process to runqueue */
 
 #ifndef USE_BIG_KERNEL_LOCK
-  list_insert_after(&this_cpu->nextq, &clone->task_node);
-  this_cpu->nextq_len++;
+  spin_lock(&runq_lock);
+  list_insert_after(&runq, &clone->task_node);
+  spin_unlock(&runq_lock);
   spin_unlock(&task->task_lock);
 #else
   list_insert_after(&runq, &clone->task_node);

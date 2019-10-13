@@ -585,7 +585,10 @@ void task_run(struct task *task)
     list_insert_after(&this_cpu->nextq, &this_cpu->cpu_task->task_node);
     this_cpu->nextq_len++;
 #endif
-  }
+  } else if (this_cpu->cpu_task && this_cpu->cpu_task == task && task->task_pid == 0) {
+	  this_cpu->cpu_task = NULL;
+	  sched_yield();
+	}
 
 	spin_lock(&task->task_lock);
 
