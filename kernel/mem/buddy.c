@@ -243,7 +243,9 @@ struct page_info *buddy_find(size_t req_order)
 struct page_info *page_alloc(int alloc_flags)
 {
 #ifndef USE_BIG_KERNEL_LOCK
-  spin_lock(&buddy_lock);
+  if (!holding(&buddy_lock)) {
+    spin_lock(&buddy_lock);
+  }
 #endif
   struct page_info *page = alloc_flags & ALLOC_HUGE ?
                            buddy_find(BUDDY_2M_PAGE) :
@@ -375,6 +377,7 @@ int buddy_map_chunk(struct page_table *pml4, size_t index)
 #ifndef USE_BIG_KERNEL_LOCK
   spin_lock(&buddy_lock);
 #endif
+
   struct page_info *page, *base;
 	void *end;
 	size_t nblocks = (1 << (12 + BUDDY_MAX_ORDER - 1)) / PAGE_SIZE;
@@ -384,10 +387,8 @@ int buddy_map_chunk(struct page_table *pml4, size_t index)
 	index = ROUNDDOWN(index, nblocks);
 	base = pages + index;
 
-#ifndef USE_BIG_KERNEL_LOCK
-  spin_unlock(&buddy_lock);
-#endif
 	for (i = 0; i < nalloc; ++i) {
+	  // This is gonna release the lock
 		page = page_alloc(ALLOC_ZERO);
 #ifndef USE_BIG_KERNEL_LOCK
     spin_lock(&buddy_lock);
@@ -405,17 +406,20 @@ int buddy_map_chunk(struct page_table *pml4, size_t index)
 #ifndef USE_BIG_KERNEL_LOCK
       spin_unlock(&buddy_lock);
 #endif
-			return -1;
+
+      return -1;
 		}
-#ifndef USE_BIG_KERNEL_LOCK
-    spin_unlock(&buddy_lock);
-#endif
 	}
+
 #ifndef USE_BIG_KERNEL_LOCK
-  spin_lock(&buddy_lock);
+	if (!holding(&buddy_lock)) {
+    spin_lock(&buddy_lock);
+	}
 #endif
 
-	for (i = 0; i < nblocks; ++i) {
+
+
+  for (i = 0; i < nblocks; ++i) {
 		page = base + i;
 		list_init(&page->pp_node);
 	}
@@ -425,6 +429,7 @@ int buddy_map_chunk(struct page_table *pml4, size_t index)
 #ifndef USE_BIG_KERNEL_LOCK
   spin_unlock(&buddy_lock);
 #endif
+
   return 0;
 }
 
