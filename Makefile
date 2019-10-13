@@ -106,6 +106,7 @@ BOOT_LDFLAGS := -N -nostdlib -T boot/boot.ld -m32 -static -fno-pie -Wl,-melf_i38
 KERNEL_CFLAGS := $(CFLAGS) -DJOS_KERNEL -gdwarf-2 -mcmodel=large -fno-pie
 KERNEL_CFLAGS += -DKERNEL_LMA=0x100000
 KERNEL_CFLAGS += -DKERNEL_VMA=0xFFFF800000000000
+KERNEL_CFLAGS += -mno-sse
 
 KERNEL_LDFLAGS := -Tkernel/kernel.ld -nostdlib -n -fno-pie
 KERNEL_LDFLAGS += -Wl,--defsym,KERNEL_LMA=0x100000
@@ -143,10 +144,12 @@ QEMUOPTS += -device ide-drive,drive=disk1,bus=ahci.1
 QEMUOPTS += -serial mon:stdio -gdb tcp::$(GDBPORT)
 QEMUOPTS += $(shell if $(QEMU) -nographic -help | grep -q '^-D '; then echo '-D qemu.log'; fi)
 QEMUOPTS += -no-reboot -D /dev/stdout
-IMAGES = $(OBJDIR)/kernel/kernel.img
 QEMUOPTS += -smp $(CPUS)
 IMAGES = $(OBJDIR)/kernel/swap.img
 QEMUOPTS += $(QEMUEXTRA)
+
+IMAGES += $(OBJDIR)/kernel/kernel.img
+IMAGES += $(OBJDIR)/kernel/swap.img
 
 .gdbrc: .gdbrc.tmpl
 	sed "s/localhost:1234/localhost:$(GDBPORT)/" < $^ > $@
