@@ -12,6 +12,9 @@
 
 struct list runq;
 
+extern struct list dead_tasks;
+extern struct spinlock dead_tasks_lock;
+
 #ifndef USE_BIG_KERNEL_LOCK
 struct spinlock runq_lock = {
 #ifdef DBEUG_SPINLOCK
@@ -137,24 +140,20 @@ void sched_yield(void)
 #endif
 
 	if(list_is_empty(func_runq) && this_cpu->cpu_task == NULL) {
-#ifndef USE_BIG_KERNEL_LOCK
-    spin_lock(&runq_lock);
-#endif
 	  sched_halt();
 	} else if (list_is_empty(func_runq) && this_cpu->cpu_task) {
 
 	  // If current task has been killed by some other task
 	  if (this_cpu->cpu_task->task_pid == 0) {
       this_cpu->cpu_task = NULL;
-#ifndef USE_BIG_KERNEL_LOCK
-      spin_lock(&runq_lock);
 	    sched_halt();
-#endif
 	  }
-	  task_run(this_cpu->cpu_task);
+
+    task_run(this_cpu->cpu_task);
 	}else {
     node = list_pop_left(func_runq);
     task = container_of(node, struct task, task_node);
+
     task->task_cpunum = this_cpu->cpu_id;
 
 #ifndef USE_BIG_KERNEL_LOCK
@@ -177,18 +176,30 @@ int check_running() {
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {
-
   xchg(&this_cpu->cpu_status, CPU_HALTED);
 
 #ifdef USE_BIG_KERNEL_LOCK
   spin_unlock(&kernel_lock);
-#else
-  spin_unlock(&runq_lock);
 #endif
 
   if (list_is_empty(&runq) && boot_cpu->cpu_status == CPU_HALTED) {
     if (this_cpu->cpu_id == boot_cpu->cpu_id && !check_running()) {
       asm volatile("cli\n");
+
+      spin_lock(&dead_tasks_lock);
+      while (!list_is_empty(&dead_tasks)) {
+        struct task * task = container_of(list_pop_left(&dead_tasks), struct task, task_node);
+        spin_lock(&task->task_lock);
+        if (list_is_empty(&task->task_children)) {
+          task_free(task);
+        } else {
+          spin_unlock(&task->task_lock);
+        }
+      }
+      if (holding(&dead_tasks_lock)) {
+        spin_unlock(&dead_tasks_lock);
+      }
+
       while (1) {
         monitor(NULL);
       }

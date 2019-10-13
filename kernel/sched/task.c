@@ -16,6 +16,9 @@ size_t nuser_tasks = 0;
 extern struct list runq;
 extern struct spinlock kernel_lock;
 
+struct list dead_tasks;
+struct spinlock dead_tasks_lock;
+
 /* Looks up the respective task for a given PID.
  * If check_perm is non-zero, this function checks if the PID maps to the
  * current task or if the current task is the parent of the task that the PID
@@ -67,7 +70,7 @@ void task_init(void)
 	/* Allocate an array of pointers at PIDMAP_BASE to be able to map PIDs
 	 * to tasks.
 	 */
-
+  list_init(&dead_tasks);
 	size_t total_pages = (pid_max * sizeof(struct task *)) / PAGE_SIZE;
 	for (size_t i = 0; i < total_pages; ++i) {
     struct page_info * page = page_alloc(ALLOC_ZERO);
@@ -363,6 +366,7 @@ void task_create(uint8_t *binary, enum task_type type)
 	/* LAB 3: your code here. */
 	/* LAB 5: your code here. */
   list_init(&task->task_children);
+  list_init(&task->task_child);
   list_init(&task->task_zombies);
 	list_insert_after(&runq, &task->task_node); //add process to run queue
 }
@@ -375,13 +379,17 @@ void handle_waiting(struct task *parent, struct task *child) {
     pid_t return_val = child->task_pid;
     child->task_status = TASK_DYING;
 
+    spin_unlock(&child->task_lock);
+    cprintf("CPU %d - Recursive Free %d\n", this_cpu->cpu_id, child->task_pid);
     task_free(child);
 
     parent->task_status = TASK_RUNNABLE;
     parent->task_frame.rax = return_val;
 
+    // TODO runq lock
     list_insert_after(&runq, &parent->task_node);
 
+    spin_unlock(&parent->task_lock);
     sched_yield();
   }
 
@@ -391,15 +399,28 @@ void handle_waiting(struct task *parent, struct task *child) {
  */
 void task_free(struct task *task)
 {
-	struct task *waiting;
+	struct task *waiting = NULL;
 
 	/* LAB 5: your code here. */
 	/* If we are freeing the current task, switch to the kernel_pml4
 	 * before freeing the page tables, just in case the page gets re-used.
 	 */
 
-  if (task->task_ppid != 0 && task->task_status != TASK_DYING) {
+	// Get Parent
+	// Get Task
+
+	if (task->task_ppid > 0) {
     waiting = pid2task(task->task_ppid, 0);
+    if (!holding(&waiting->task_lock)) {
+      spin_lock(&waiting->task_lock);
+    }
+	}
+
+	if (!holding(&task->task_lock)) {
+    spin_lock(&task->task_lock);
+  }
+
+  if (waiting && waiting->task_pid != 0 && task->task_status != TASK_DYING) {
 
     if (waiting->task_status == TASK_NOT_RUNNABLE) {
       handle_waiting(waiting, task);
@@ -414,6 +435,8 @@ void task_free(struct task *task)
       this_cpu->cpu_task = NULL;
     }
 
+    spin_unlock(&task->task_lock);
+    spin_unlock(&waiting->task_lock);
     sched_yield();
   }
 
@@ -429,9 +452,15 @@ void task_free(struct task *task)
 
   // Detach children
   if (!list_is_empty(&task->task_children)) {
+    int result = 0;
     list_foreach_safe(&task->task_children, node, next) {
       item = container_of(node, struct task, task_child);
+      result = spin_trylock(&item->task_lock);
+
+      if (!result) continue;
+
       item->task_ppid = 0;
+      spin_unlock(&item->task_lock);
     }
   }
 
@@ -450,8 +479,7 @@ void task_free(struct task *task)
 
   nuser_tasks--;
   list_remove(&task->task_node);
-
-  if (task->task_ppid != 0) list_remove(&task->task_child);
+  list_remove(&task->task_child);
 
   /* Note the task's demise. */
   cprintf("[PID %5u] Freed task with PID %d\n", this_cpu->cpu_task ? this_cpu->cpu_task->task_pid : 0,
@@ -460,6 +488,21 @@ void task_free(struct task *task)
   if (this_cpu->cpu_task == task) {
     this_cpu->cpu_task = NULL;
   }
+
+  if (!holding(&dead_tasks_lock)) {
+    spin_lock(&dead_tasks_lock);
+  }
+
+  if (!list_is_empty(&task->task_children)) {
+    list_insert_after(&dead_tasks, &task->task_node);
+    task->task_status = TASK_DYING;
+    spin_unlock(&dead_tasks_lock);
+    spin_unlock(&task->task_lock);
+    sched_yield();
+  }
+
+  spin_unlock(&dead_tasks_lock);
+  spin_unlock(&task->task_lock);
 
   /* Free the task. */
   kfree(task);
@@ -544,6 +587,8 @@ void task_run(struct task *task)
 #endif
   }
 
+	spin_lock(&task->task_lock);
+
   this_cpu->cpu_task = task;
   this_cpu->cpu_task->task_status = TASK_RUNNING;
   this_cpu->cpu_task->task_runs++;
@@ -553,6 +598,7 @@ void task_run(struct task *task)
   spin_unlock(&kernel_lock);
 #endif
 
+  spin_unlock(&task->task_lock);
   task_pop_frame(&task->task_frame);
 
 	/* LAB 3: Your code here. */
