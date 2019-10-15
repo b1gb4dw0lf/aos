@@ -14,8 +14,6 @@ size_t get_mm_rss(struct task * task) {
   struct list * node, * next;
   struct vma * vma = NULL;
 
-  spin_lock(&task->task_lock);
-
   // Get all mapped memory
   // Includes anon + file + shared page size
   list_foreach_safe(&task->task_mmap, node, next) {
@@ -25,8 +23,6 @@ size_t get_mm_rss(struct task * task) {
       rss += vma->vm_end - vma->vm_base;
     }
   }
-
-  spin_unlock(&task->task_lock);
 
   return rss;
 }

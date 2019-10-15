@@ -278,17 +278,16 @@ void page_fault_handler(struct int_frame *frame)
 		panic("Kernel mode page fault\n");
 	}
 
-	//If free pages are below activate oom killing 15% of total pages
-	if (get_free_page_count() < (size_t)(npages * 0.15)) {
-	  cprintf("CPU %d - OOM Killing in process\n");
-	  struct task * unlucky_task = get_task_to_kill();
+  //If free pages are below activate oom killing 15% of total pages
+  if (get_free_page_count() < 512) {
+    cprintf("CPU %d - OOM Killing in process\n", this_cpu->cpu_id);
+    struct task * unlucky_task = get_task_to_kill();
     if (this_cpu->cpu_task == unlucky_task) {
       this_cpu->cpu_task = NULL;
     }
-    cprintf("CPU %d - Killing Task %d\n", unlucky_task->task_pid);
-	  task_destroy(unlucky_task);
-	}
-
+    cprintf("CPU %d - Killing Task %d\n", this_cpu->cpu_id, unlucky_task->task_pid);
+    task_destroy(unlucky_task);
+  }
 
 	/* We have already handled kernel-mode exceptions, so if we get here, the
 	 * page fault has happened in user mode.
