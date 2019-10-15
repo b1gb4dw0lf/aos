@@ -230,8 +230,9 @@ struct task * task_alloc_kernel(pid_t ppid) {
   // Since this is a kernel thread?
   task->task_frame.rsp = KSTACK_TOP;
 
+  // Prevent interrupt by not enabling IF flags
 
-  cprintf("[PID %5u] New task with PID %u\n",
+  cprintf("[PID %5u] New kernel task with PID %u\n",
           this_cpu->cpu_task ? this_cpu->cpu_task->task_pid : 0, task->task_pid);
 
   return task;

@@ -51,6 +51,7 @@ KERNEL_SRCFILES += \
 	kernel/sched/stubs.S \
 	kernel/sched/syscall.c \
 	kernel/sched/task.c \
+	kernel/sched/oom.c \
 	kernel/tests/lab3.c \
 
 # LAB 3 binaries

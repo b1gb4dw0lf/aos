@@ -22,6 +22,19 @@ struct spinlock buddy_lock = {
 };
 #endif
 
+size_t get_free_page_count() {
+  size_t order;
+  size_t nfree_pages;
+  size_t nfree = 0;
+
+  for (order = 0; order < BUDDY_MAX_ORDER; ++order) {
+    nfree_pages = count_free_pages(order);
+    nfree += nfree_pages * (1 << (order + 12));
+  }
+
+  return nfree / PAGE_SIZE;
+}
+
 /* Counts the number of free pages for the given order.
  */
 size_t count_free_pages(size_t order)
