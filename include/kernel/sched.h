@@ -7,5 +7,6 @@
 #include <kernel/sched/syscall.h>
 #include <kernel/sched/task.h>
 #include <kernel/sched/wait.h>
+#include <kernel/sched/oom.h>
 
 
