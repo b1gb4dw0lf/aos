@@ -1,0 +1,49 @@
+Main design for memory swapping 
+Known : 
+o disks 
+  - Disks reside in the disks variable (#include disk.h)
+  - Disks currently consist of the kernel image with boot and such (0) and the swap disk (1)
+  - Disks support three operations, poll, read and write. 
+    - read/write have to be sector aligned (512 bytes) 
+    - They are non blocking, and can be checked through disk_poll
+    o - thus a normal way to use it would be to read/write and act as if it is being queued. 
+    o - check completion through disk_poll
+
+o swapping
+  - Swapping Should happen through kernel threads
+  o - this means a swap happens completely separate from the tasks actually using the relevant pages
+
+  - The conditions for swapping are as follows
+  1 - A page is last in the CLOCK(algorithm) and is thus 'least' used, and can be swapped out 
+  2 - The page is still mapped by some tasks (! design for this later)
+  3 - The page is not used by kernel tasks. (! is this really a requirement?, is just hypothetical)
+
+  - The algorithm for swapping out would be as follows
+  1 - kswap kernel thread triggers a swap on a page that adheres to the conditions above
+  2 - [swalloc!] our linear mapping to the swap disk gives us a free space to swap to
+  3 - we write the page contens to sectors on disk
+    o The write would be 4096/512 = 8 exactly sectors  and needs to be 512 bytes aligned.
+    o The write would be non-blocking and should thus happen in the background, this would
+      make it rather unreliable as some applications could claim memory too fast , right ?
+  4 - through disk_poll we can see that the write has actually happened
+    o Can we clear the page before the write finishes? maybe? idunno? 
+  5 - we write the swap_offset | PAGE_SWAP flag to all the PTE's that map the page we just swapped.
+    o - the process is as follows [ proposal ] , this process is very expansive in the slides so this 
+      might not work properly.
+    1 - we run container_of(*page) and set the obtained *entry to swap_offset | PAGE_SWAP 
+    2 - we repeat the above step untill no valid container can be obtained 
+  6 - The page can finally be freed through normal means. 
+
+  - The algorithm for swapping in would be as follows
+  1 - a pagefault occurs on a page
+  2 - our pagefault handler reads the PAGE_SWAP flag
+  3 - our pagefault handler will trigger our swap-in utilities
+    - swap-in would be probably gets its own file with swap-in and swap-out functions. 
+    1 - *entry describes the offset(And maybe the region) at which the page resides
+    2 - we read from disk, and this should maybe be blocking as the caller needs to wait
+    3 - disk_poll indicates the read is done and we can just write the data to page (can be merged with step 2, as long as we wait for polling)
+    4 - the space on swap needs to be freed through swalloc as well.
+    5 - All pages mapping this entry need to know that the entry is swapped back in (!!!) as to not trigger another swapin
+      o We cant use container of as we deleted the mappings... ? maybe for later? this is a rough one. 
+        - Swap utility could keep track of page_info structs to swap mappings. as these shoud be unique. 
+  4 - return to task. 
