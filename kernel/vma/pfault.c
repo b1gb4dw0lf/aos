@@ -2,6 +2,7 @@
 
 #include <kernel/mem.h>
 #include <kernel/vma.h>
+#include <cpu.h>
 
 #ifdef BONUS_LAB5
 struct page_info * zeropage;
@@ -23,17 +24,18 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
   int vm_flags = 0;
   vm_flags |= flags & 2 ? PAGE_WRITE : PAGE_PRESENT;
 
+  uint64_t page_flags = 0;
+
+  if(found->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
+  if(found->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
+  if(!(found->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
+  page_flags |= PAGE_USER;
+
   /* LAB 5: your code here. */
   if (found->page_addr) {
     // If it is mapped, it is probably a write on shared
     // address check flags and create a new entry?
 
-    uint64_t page_flags = 0;
-
-    if(found->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
-    if(found->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
-    if(!(found->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
-    page_flags |= PAGE_USER;
 
     if (!(page_flags & vm_flags)) return -1;
 
@@ -85,6 +87,13 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
       }
     }
     #endif
+
+    struct sector_info * sector = get_swap_sector(found->vm_base);
+
+    if (sector) {
+      return swap_in(this_cpu->cpu_task, sector, page_flags);
+    }
+
     return populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
   }
 }

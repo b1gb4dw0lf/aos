@@ -111,7 +111,7 @@ int swap_out(struct task * task, void * addr) { //return 0 on succes, -1 on fail
 }
 
 /* swap a page in by allocating a page and moving the swap contents to it */
-int swap_in(uint64_t sector_id) { //return 0(or return offset?) on succes, -1 on failure
+int swap_in(struct task * task, struct sector_info * sector, uint64_t flags) { //return 0(or return offset?) on succes, -1 on failure
   /* steps below
    * 1 - page_alloc to request a new page 
    * 2 - write data from swap to the given page, save the location offset
@@ -124,19 +124,12 @@ int swap_in(uint64_t sector_id) { //return 0(or return offset?) on succes, -1 on
    * 5 - move the swap_sector from sector_taken_list to the sector_free_list
    */
   struct list * node;
-  struct sector_info * sector = NULL;
   struct page_info * page;
 
 
-  cprintf("[swap] look up sector id : %d\n", sector_id);
+  cprintf("[swap] look up sector id : %d\n", sector->sector_id);
   /* look up sector */
   spin_lock(&taken_list_lock);
-  list_foreach(&sector_taken_list, node) {
-    sector = container_of(node, struct sector_info, sector_node);
-    if(sector->sector_id == sector_id) {
-      break;
-    }
-  }
   /* clean up sector from taken list */
   if(!sector) return -1;
   list_remove(&sector->sector_node);
@@ -145,6 +138,7 @@ int swap_in(uint64_t sector_id) { //return 0(or return offset?) on succes, -1 on
   /* read page from disk */
   page = page_alloc(ALLOC_ZERO);
   disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page), PAGE_SIZE / SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
+  page_insert(task->task_pml4, page, (void *) sector->placeholder, flags);
 
   /* add sector to free list */
   spin_lock(&free_list_lock);
@@ -152,4 +146,20 @@ int swap_in(uint64_t sector_id) { //return 0(or return offset?) on succes, -1 on
   spin_unlock(&free_list_lock);
 
   return 0;
+}
+
+struct sector_info * get_swap_sector(void * addr) {
+  struct list *node, *next;
+  struct sector_info * sector;
+
+  spin_lock(&free_list_lock);
+  list_foreach_safe(&sector_free_list, node, next) {
+    sector = container_of(node, struct sector_info, sector_node);
+    if (sector->placeholder == (uintptr_t) addr) {
+      spin_unlock(&free_list_lock);
+      return sector;
+    }
+  }
+  spin_unlock(&free_list_lock);
+  return NULL;
 }

@@ -17,6 +17,7 @@ struct sector_info {
 };
 
 void swap_init(void);
-int swap_out(struct task * task, void * addr)
-int swap_in(uint64_t sector_id);
+int swap_out(struct task * task, void * addr);
+int swap_in(struct task * task, struct sector_info * sector, uint64_t flags);
 int swap_free_sectors(void);
+struct sector_info * get_swap_sector(void * addr);
