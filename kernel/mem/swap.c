@@ -75,24 +75,18 @@ int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure
   spin_unlock(&free_list_lock);
 
   /* now we write the data to disk */
-  for(int s = 0 ; s < PAGE_SIZE ; s += SECTOR_SIZE) {
-    /* SWAP_DISK_NUM describes disk id 1, so disks[1] should be swap */
-    /* page2pa(pp) + s should increase by 512 bytes each iteration */
-    /* sector_id is initialized by swap_init and describes PAGE_SIZE offsets on disk */
-    disk_write(disks[SWAP_DISK_NUM], (void *)page2pa(pp) + s, SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
-  }
+  disk_write(disks[SWAP_DISK_NUM], (void *)page2kva(pp), PAGE_SIZE / SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
 
   /* insert sector into taken list */
   spin_lock(&taken_list_lock);
-  list_push(&sector_taken_list, &sector_info->sector_node);
+  list_push(&sector_taken_list, &sector->sector_node);
   spin_unlock(&taken_list_lock);
 
-  panic("swap_out not implemented yet!\n");
-  return -1;
+  return 0;
 }
 
 /* swap a page in by allocating a page and moving the swap contents to it */
-int swap_in(uint64_t descriptor) { //return 0(or return offset?) on succes, -1 on failure
+int swap_in(uint64_t sector_id) { //return 0(or return offset?) on succes, -1 on failure
   /* steps below
    * 1 - page_alloc to request a new page 
    * 2 - write data from swap to the given page, save the location offset
@@ -104,8 +98,33 @@ int swap_in(uint64_t descriptor) { //return 0(or return offset?) on succes, -1 o
    * 4 - write new page location to all relevant PTE's (restore flags?)
    * 5 - move the swap_sector from sector_taken_list to the sector_free_list
    */
-  cprintf("sizeof sector struct : %d\n", sizeof(struct sector_info));
+  struct list * node;
+  struct sector_info * sector = NULL;
+  struct page_info * page;
 
-  panic("swap_out not implemented yet!\n");
-  return -1;
+
+  cprintf("[swap] look up sector id : %d\n", sector_id);
+  /* look up sector */
+  spin_lock(&taken_list_lock);
+  list_foreach(&sector_taken_list, node) {
+    sector = container_of(node, struct sector_info, sector_node);
+    if(sector->sector_id == sector_id) {
+      break;
+    }
+  }
+  /* clean up sector from taken list */
+  if(!sector) return -1;
+  list_remove(&sector->sector_node);
+  spin_unlock(&taken_list_lock);
+
+  /* read page from disk */
+  page = page_alloc(ALLOC_ZERO);
+  disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page), PAGE_SIZE / SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
+
+  /* add sector to free list */
+  spin_lock(&free_list_lock);
+  list_push_left(&sector_free_list, &sector->sector_node);
+  spin_unlock(&free_list_lock);
+
+  return 0;
 }

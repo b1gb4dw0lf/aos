@@ -64,8 +64,12 @@ void kmain(struct boot_info *boot_info)
 
 	/* Set up swap structs */
 	swap_init();
-	cprintf("free sectors : %d\n", swap_free_sectors());
-
+	cprintf("[swap] free sectors : %d\n", swap_free_sectors());
+	struct page_info * page = page_alloc(ALLOC_ZERO);
+	swap_out(page);
+	cprintf("[swap] free sectors : %d\n", swap_free_sectors());
+	swap_in(0);
+	cprintf("[swap] free sectors : %d\n", swap_free_sectors());
 #ifdef USE_BIG_KERNEL_LOCK
 	spin_lock(&kernel_lock);
 #else
