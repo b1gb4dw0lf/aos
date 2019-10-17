@@ -2,6 +2,7 @@
 
 #define MAX_SECTORS (128 * 1024 * 1024) / 512 //disksize / sector size
 #define SWAP_DISK_NUM 1 //swap.img disknumber for the disks variable
+#define SECTOR_SIZE 512
 
 struct sector_info {
 	struct spinlock lock;	  /* cluster typically 512 byte size.
@@ -9,6 +10,7 @@ struct sector_info {
                            * descriptor can be used to retrieve mapping vma's
                   				 */
 	uint64_t descriptor;
+	struct list sector_node;
 };
 
 void swap_init(void);
