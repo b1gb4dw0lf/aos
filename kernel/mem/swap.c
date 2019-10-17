@@ -99,7 +99,7 @@ int swap_out(struct task * task, void * addr) { //return 0 on succes, -1 on fail
   /* now we write the data to disk */
   sector->placeholder = (uintptr_t) found->vm_base;
   disk_write(disks[SWAP_DISK_NUM], (void *) found->vm_base,
-      PAGE_SIZE / SECTOR_SIZE, sector->sector_id;
+      PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
   unmap_page_range(task->task_pml4, found->vm_base, found->vm_end - found->vm_base);
 
   /* insert sector into taken list */
