@@ -17,4 +17,4 @@
 #include <kernel/mem/user.h>
 #include <kernel/mem/walk.h>
 #include <kernel/mem/lru.h>
-
+#include <kernel/mem/swap.h>
