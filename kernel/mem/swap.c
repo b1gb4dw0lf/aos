@@ -5,7 +5,9 @@
 #include <kernel/dev/disk.h>
 
 /* sector counter */
-size_t nsector; 
+size_t nsector;
+
+#define DISK_SIZE 134217728
 
 /* we might have to lock the taken and free list for multiprocessing */
 struct spinlock free_list_lock;
@@ -15,40 +17,51 @@ struct spinlock taken_list_lock;
 struct list sector_free_list;
 struct list sector_taken_list;
 
+struct spinlock sector_free_lock;
+struct spinlock sector_taken_lock;
+
+size_t nfree_sectors;
+
 /* memory that stores the sector_info structs */
+struct sector_info * sectors;
 
 /* init lists and nsector */
 void swap_init() {
-  uint64_t sector_counter;
-  uint64_t page_counter;
   struct page_info * page;
+
   list_init(&sector_free_list);
   list_init(&sector_taken_list);
 
-  /* for efficient storing we calculate the requires space dynamically */
-  uint64_t sector_info_pagecount = (MAX_PAGES * sizeof(struct sector_info)) / PAGE_SIZE;
-  uint64_t sector_info_per_page = PAGE_SIZE / sizeof(struct sector_info);
+  size_t total_sectors = DISK_SIZE / SECTOR_SIZE;
+  nsector = total_sectors;
+  size_t total_sector_info = (total_sectors / (PAGE_SIZE / SECTOR_SIZE));
+  size_t total_page_count = (total_sector_info * sizeof(struct sector_info)) / PAGE_SIZE;
 
-  for(page_counter = 0 ; page_counter < sector_info_pagecount ; page_counter++) {
-    /* allocate a page for the sector_info structs */
+  // Start sector struct after pages structs
+  sectors = (struct sector_info *) (pages + npages);
+
+  for (size_t i = 0; i < total_page_count; ++i) {
     page = page_alloc(ALLOC_ZERO);
-    for(sector_counter = 0 ; sector_counter < sector_info_per_page ; sector_counter++) {
-      struct sector_info * sector = page2kva(page) + (sector_counter * sizeof(struct sector_info));
-      sector->sector_id = (page_counter * sector_info_per_page) + sector_counter;
-      list_push(&sector_free_list, &sector->sector_node);
-    }
+    page_insert(kernel_pml4, page,
+                (void *)sectors + (i * PAGE_SIZE),
+                PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
   }
-  nsector = 0;
+
+  struct sector_info * sector;
+  for (size_t j = 0; j < total_sector_info; ++j) {
+    sector = &sectors[j];
+
+    // Keep the sector id
+    sector->sector_id = j * 8;
+
+    // Make free entry lookup cheap
+    list_insert_after(&sector_free_list, &sector->sector_node);
+  }
+
+  nfree_sectors = total_sector_info;
 }
 
 int swap_free_sectors() {
-  struct list *node;
-  size_t nfree_sectors = 0;
-
-  list_foreach(&sector_free_list, node) {
-    ++nfree_sectors;
-  }
-
   return nfree_sectors;
 }
 

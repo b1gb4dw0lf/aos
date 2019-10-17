@@ -2,6 +2,8 @@
 
 #include <types.h>
 
+#define SECTOR_SIZE 512
+
 struct disk;
 
 struct disk_ops {
