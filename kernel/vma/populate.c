@@ -52,11 +52,7 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 
     if (!page) continue;
 
-    if (vma->vm_src) {
-      insert_after_inactive(&page->lru_node);
-    } else {
-      insert_after_working(&page->lru_node);
-    }
+    add_fifo(&page->lru_node);
   }
 
 	return 0;
