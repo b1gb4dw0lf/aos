@@ -2,6 +2,7 @@
 #include <list.h>
 #include <spinlock.h>
 #include <kernel/mem.h>
+#include <kernel/vma.h>
 #include <kernel/dev/disk.h>
 
 /* sector counter */
@@ -66,7 +67,7 @@ int swap_free_sectors() {
 }
 
 /* swap a page out by moving its contents to swap and freeing the page */
-int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure 
+int swap_out(struct task * task, void * addr) { //return 0 on succes, -1 on failure
   /* steps below
    * 1 - Request swapping page (acquire lock, move to sector_taken list)
    * 2 - Write page contents to swap
@@ -78,21 +79,31 @@ int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure
    * 6 - free the page.
    */
 
+  struct vma * found = task_find_vma(task, addr);
+
+  // This process shouldn't have that page
+  if (!found) return -1;
+
+  spin_lock(&free_list_lock);
+
   /* first we shall acquire a free sector */
   if(list_is_empty(&sector_free_list)) {
+    spin_unlock(&free_list_lock);
     panic("Out of smap memory space\n");
   } 
 
-  spin_lock(&free_list_lock);
-  struct sector_info * sector = container_of(list_pop_left(&sector_free_list), struct sector_info, sector_node);
+  struct list * free_node = list_pop_left(&sector_free_list);
+  struct sector_info * sector = container_of(free_node, struct sector_info, sector_node);
   spin_unlock(&free_list_lock);
 
   /* now we write the data to disk */
-  disk_write(disks[SWAP_DISK_NUM], (void *)page2kva(pp), PAGE_SIZE / SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
+  sector->placeholder = (uintptr_t) found->vm_base;
+  disk_write(disks[SWAP_DISK_NUM], (void *) found->vm_base, PAGE_SIZE / SECTOR_SIZE, sector->sector_id * PAGE_SIZE);
+  unmap_page_range(task->task_pml4, found->vm_base, found->vm_end - found->vm_base);
 
   /* insert sector into taken list */
   spin_lock(&taken_list_lock);
-  list_push(&sector_taken_list, &sector->sector_node);
+  list_insert_after(&sector_taken_list, &sector->sector_node);
   spin_unlock(&taken_list_lock);
 
   return 0;
