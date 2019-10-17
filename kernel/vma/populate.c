@@ -44,6 +44,21 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 	protect_region(task->task_pml4, base, size, page_flags);
 	vma->page_addr = base; // Set this if mapped
 
+	// Adds mapped pages to active or inactive sets
+	// TODO: Should we make a distinciton between stack pages?
+  struct page_info * page = NULL;
+  for (void * s = base; s < (base + size); s+=PAGE_SIZE) {
+    page = page_lookup(task->task_pml4, s, NULL);
+
+    if (!page) continue;
+
+    if (vma->vm_src) {
+      insert_after_inactive(&page->lru_node);
+    } else {
+      insert_after_working(&page->lru_node);
+    }
+  }
+
 	return 0;
 }
 

@@ -34,6 +34,9 @@ struct page_info {
 
 	/* Reserved. */
 	uint64_t pp_zero;
+
+	struct list lru_node;
+
 };
 #endif /* !__ASSEMBLER__ */
 

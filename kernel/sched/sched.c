@@ -106,6 +106,25 @@ void swap_queue() {
   this_cpu->nextq_len = 0;
 }
 
+void print_work_sets () {
+  struct list * node;
+  struct page_info * page;
+
+  spin_lock(&working_set_lock);
+  list_foreach(&working_set,node) {
+    page = container_of(node, struct page_info, lru_node);
+    cprintf("Active - Addr: %p Ref: %p Order: %d\n", page2pa(page), page->pp_ref, page->pp_order);
+  }
+  spin_unlock(&working_set_lock);
+
+  spin_lock(&inactive_set_lock);
+  list_foreach(&inactive_set,node) {
+    page = container_of(node, struct page_info, lru_node);
+    cprintf("Inactive - Addr: %p Ref: %p Order: %d\n", page2pa(page), page->pp_ref, page->pp_order);
+  }
+  spin_unlock(&inactive_set_lock);
+}
+
 /**
  * This will be either called from syscalls or init sides
  * Caller needs to acquire a lock

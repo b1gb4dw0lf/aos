@@ -141,6 +141,8 @@ void mem_init(struct boot_info *boot_info)
 	page_init_ext(boot_info);
 	dump_page_tables(kernel_pml4, PAGE_HUGE);
 
+	lru_init();
+
 	/* Check the buddy allocator. */
 	lab2_check_buddy(boot_info);
   mem_init_mp();
@@ -189,6 +191,7 @@ void page_init(struct boot_info *boot_info)
 
     // call list_init() to initialize the linked list node.
     list_init(&page->pp_node);
+    list_init(&page->lru_node);
     // set the reference count pp_ref to zero.
     page->pp_ref = 0;
     // mark the page as in use by setting pp_free to zero.
@@ -288,7 +291,7 @@ void page_init_ext(struct boot_info *boot_info)
                         HPAGE_SIZE, pa, PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
 
         for (size_t j = 0; j < 512; ++j) {
-										page_free(pa2page(pa + (j * PAGE_SIZE)));
+          page_free(pa2page(pa + (j * PAGE_SIZE)));
         }
 			  pa += HPAGE_SIZE - PAGE_SIZE;
 			} else {
