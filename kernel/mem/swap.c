@@ -13,20 +13,29 @@ size_t nsector;
 struct list sector_free_list;
 struct list sector_taken_list;
 
+/* memory that stores the sector_info structs */
+
 /* init lists and nsector */
 void swap_init() {
   uint64_t sector_counter;
+  uint64_t page_counter;
+  struct page_info * page;
   list_init(&sector_free_list);
   list_init(&sector_taken_list);
 
-  /* sectors work by page granularity , though the sectors are actually 512 bytes*/
-  for(sector_counter = 0 ; sector_counter < MAX_PAGES ; sector_counter++) {
-    struct sector_info sector;
-    sector.descriptor = 0;
-    sector.sector_id = sector_counter;
-    list_push(&sector_free_list, &sector.sector_node);
-  }
+  /* for efficient storing we calculate the requires space dynamically */
+  uint64_t sector_pages = (MAX_PAGES * sizeof(struct sector_info)) / PAGE_SIZE;
+  uint64_t sectors_per_page = PAGE_SIZE / sizeof(struct sector_info);
 
+  for(page_counter = 0 ; page_counter < sector_pages ; page_counter++) {
+    /* allocate a page for the sector_info structs */
+    page = page_alloc(ALLOC_ZERO);
+    for(sector_counter = 0 ; sector_counter < sectors_per_page ; sector_counter++) {
+      struct sector_info * sector = (void*)page2pa(page) + (sector_counter * sizeof(struct sector_info));
+      sector->sector_id = (page_counter * sectors_per_page) + sector_counter;
+      list_push(&sector_free_list, &sector->sector_node);
+    }
+  }
   nsector = 0;
 }
 
@@ -60,8 +69,7 @@ int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure
   } 
 
   struct sector_info * sector = container_of(list_pop_left(&sector_free_list), struct sector_info, sector_node);
-  /* now we acquire the lock */
-  spin_lock(&sector->lock);
+  /* [?]now we acquire the lock */
   /* now we write the data to disk */
   for(int s = 0 ; s < PAGE_SIZE ; s += SECTOR_SIZE) {
     /* SWAP_DISK_NUM describes disk id 1, so disks[1] should be swap */
@@ -70,8 +78,7 @@ int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure
     disk_write(disks[SWAP_DISK_NUM], (void *)page2pa(pp) + s, SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
   }
 
-  /* now we unlock */
-  spin_unlock(&sector->lock);
+  /* [?]now we unlock */
 
 
 
@@ -92,6 +99,7 @@ int swap_in(uint64_t descriptor) { //return 0(or return offset?) on succes, -1 o
    * 4 - write new page location to all relevant PTE's (restore flags?)
    * 5 - move the swap_sector from sector_taken_list to the sector_free_list
    */
+  cprintf("sizeof sector struct : %d\n", sizeof(struct sector_info));
 
   panic("swap_out not implemented yet!\n");
   return -1;

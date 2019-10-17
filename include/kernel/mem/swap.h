@@ -6,11 +6,12 @@
 #define SECTOR_SIZE 512
 
 struct sector_info {
-	struct spinlock lock;	  /* cluster typically 512 byte size.
+	//struct spinlock lock;	  
+	 /* cluster typically 512 byte size.
                            * per-cluster lock
                            * descriptor can be used to retrieve mapping vma's
                   				 */
-	uint64_t descriptor;
+	uint64_t placeholder;
 	uint64_t sector_id;
 	struct list sector_node;
 };
