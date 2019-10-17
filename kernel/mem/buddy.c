@@ -274,6 +274,7 @@ struct page_info *page_alloc(int alloc_flags)
 #endif
 
   page->pp_free = 0;
+
   list_remove(&page->pp_node);
   if(list_is_empty(page_free_list + page->pp_order)) {
     list_init(page_free_list + page->pp_order);
@@ -314,6 +315,14 @@ void page_free(struct page_info *pp)
 #endif
 
   list_init(&pp->pp_node);
+
+  if (pp->lru_node.next) {
+    remove_working(&pp->lru_node);
+    remove_inactive(&pp->lru_node);
+  } else {
+    list_init(&pp->lru_node);
+  }
+
   pp->pp_free=1; //Mark page as free
 
   if(pp->pp_order == (BUDDY_MAX_ORDER -1)) {

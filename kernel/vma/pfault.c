@@ -49,6 +49,12 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
         // 3 - Change the corresponding entry
         page_insert(task->task_pml4, new_page, found->vm_base, page_flags);
 
+        if (found->vm_src) {
+          insert_after_inactive(&new_page->lru_node);
+        } else {
+          insert_after_working(&new_page->lru_node);
+        }
+
       } else {
         size_t num_of_pages = (found->vm_end - found->vm_base) / PAGE_SIZE;
 
@@ -59,6 +65,12 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
           memcpy(page2kva(new_page), found->vm_base + (i * PAGE_SIZE), PAGE_SIZE);
           // 3 - Change the corresponding entry
           page_insert(task->task_pml4, new_page, found->vm_base + (i * PAGE_SIZE), page_flags);
+
+          if (found->vm_src) {
+            insert_after_inactive(&new_page->lru_node);
+          } else {
+            insert_after_working(&new_page->lru_node);
+          }
         }
       }
       found->is_shared = 0;
