@@ -19,3 +19,4 @@ struct sector_info {
 void swap_init(void);
 int swap_out(struct page_info *pp);
 int swap_in(uint64_t descriptor);
+int swap_free_sectors(void);

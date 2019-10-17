@@ -8,6 +8,8 @@
 size_t nsector; 
 
 /* we might have to lock the taken and free list for multiprocessing */
+struct spinlock free_list_lock;
+struct spinlock taken_list_lock;
 
 /* the sector lists */
 struct list sector_free_list;
@@ -31,7 +33,7 @@ void swap_init() {
     /* allocate a page for the sector_info structs */
     page = page_alloc(ALLOC_ZERO);
     for(sector_counter = 0 ; sector_counter < sector_info_per_page ; sector_counter++) {
-      struct sector_info * sector = (void*)page2pa(page) + (sector_counter * sizeof(struct sector_info));
+      struct sector_info * sector = page2kva(page) + (sector_counter * sizeof(struct sector_info));
       sector->sector_id = (page_counter * sector_info_per_page) + sector_counter;
       list_push(&sector_free_list, &sector->sector_node);
     }
@@ -68,8 +70,10 @@ int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure
     panic("Out of smap memory space\n");
   } 
 
+  spin_lock(&free_list_lock);
   struct sector_info * sector = container_of(list_pop_left(&sector_free_list), struct sector_info, sector_node);
-  /* [?]now we acquire the lock */
+  spin_unlock(&free_list_lock);
+
   /* now we write the data to disk */
   for(int s = 0 ; s < PAGE_SIZE ; s += SECTOR_SIZE) {
     /* SWAP_DISK_NUM describes disk id 1, so disks[1] should be swap */
@@ -78,9 +82,10 @@ int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure
     disk_write(disks[SWAP_DISK_NUM], (void *)page2pa(pp) + s, SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
   }
 
-  /* [?]now we unlock */
-
-
+  /* insert sector into taken list */
+  spin_lock(&taken_list_lock);
+  list_push(&sector_taken_list, &sector_info->sector_node);
+  spin_unlock(&taken_list_lock);
 
   panic("swap_out not implemented yet!\n");
   return -1;
