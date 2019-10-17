@@ -13,4 +13,4 @@ void insert_after_inactive(struct list * node);
 void remove_inactive(struct list * node);
 void kswap(struct list * active);
 void add_fifo(struct list * node);
-struct list * get_fifo();
+struct list * pop_fifo();

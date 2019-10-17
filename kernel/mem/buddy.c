@@ -317,8 +317,9 @@ void page_free(struct page_info *pp)
   list_init(&pp->pp_node);
 
   if (pp->lru_node.next) {
-    remove_working(&pp->lru_node);
-    remove_inactive(&pp->lru_node);
+    spin_lock(&working_set_lock);
+    list_remove(&pp->lru_node);
+    spin_unlock(&working_set_lock);
   } else {
     list_init(&pp->lru_node);
   }

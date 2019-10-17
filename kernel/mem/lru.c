@@ -49,7 +49,7 @@ void add_fifo(struct list * node) {
   spin_unlock(&working_set_lock);
 }
 
-struct list * get_fifo() {
+struct list * pop_fifo() {
   struct list * node;
   spin_lock(&working_set_lock);
   node = list_pop_left(&working_set);
