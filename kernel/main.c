@@ -62,6 +62,9 @@ void kmain(struct boot_info *boot_info)
 	sched_init();
 	sched_init_mp();
 
+	/* Set up swap structs */
+	swap_init();
+
 #ifdef USE_BIG_KERNEL_LOCK
 	spin_lock(&kernel_lock);
 #else
