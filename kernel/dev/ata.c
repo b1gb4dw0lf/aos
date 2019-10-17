@@ -48,7 +48,7 @@ struct ata_disk {
 	struct ata_chan *chan;
 	size_t drive;
 	enum ata_state state;
-	uint64_t max_lba;
+	uint64_t nsectors;
 	size_t sect_size;
 };
 
@@ -61,6 +61,20 @@ int ata_poll(struct disk *disk)
 	status = inb(chan->status);
 
 	return (status & (ATA_STAT_BUSY | ATA_STAT_READY)) == ATA_STAT_READY;
+}
+
+int ata_stat(struct disk *disk, struct disk_stat *stat)
+{
+	struct ata_disk *ata_disk = container_of(disk, struct ata_disk, disk);
+
+	if (!stat) {
+		return -1;
+	}
+
+	stat->nsectors = ata_disk->nsectors;
+	stat->sect_size = ata_disk->sect_size;
+
+	return 0;
 }
 
 static int ata_wait_ready(struct ata_chan *chan, int check_err)
@@ -177,6 +191,7 @@ int64_t ata_write(struct disk *disk, const void *buf, size_t count, uint64_t add
 
 struct disk_ops ata_ops = {
 	.poll = ata_poll,
+	.stat = ata_stat,
 	.read = ata_read,
 	.write = ata_write,
 };
@@ -264,7 +279,7 @@ void ata_enum_device(struct ata_chan *chan, size_t chan_id, size_t drive)
 	ata_disk->chan = chan;
 	ata_disk->drive = drive;
 	ata_disk->state = ATA_IDLE;
-	ata_disk->max_lba = ident->max_lba;
+	ata_disk->nsectors = ident->max_lba;
 	ata_disk->sect_size = 512;
 	ata_disk->disk.ops = &ata_ops;
 
