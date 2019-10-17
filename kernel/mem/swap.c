@@ -7,20 +7,24 @@
 /* sector counter */
 size_t nsector; 
 
+/* we might have to lock the taken and free list for multiprocessing */
+
 /* the sector lists */
-struct list * sector_free_list;
-struct list * sector_taken_list;
+struct list sector_free_list;
+struct list sector_taken_list;
 
 /* init lists and nsector */
 void swap_init() {
-  uint64_t sector;
-  list_init(sector_free_list);
-  list_init(sector_taken_list);
+  uint64_t sector_counter;
+  list_init(&sector_free_list);
+  list_init(&sector_taken_list);
 
-  for(sector_counter = 0 ; sector_counter < MAX_SECTORS ; sector_counter++) {
+  /* sectors work by page granularity , though the sectors are actually 512 bytes*/
+  for(sector_counter = 0 ; sector_counter < MAX_PAGES ; sector_counter++) {
     struct sector_info sector;
     sector.descriptor = 0;
-    list_push(sector_free_list, &sector.sector_node);
+    sector.sector_id = sector_counter;
+    list_push(&sector_free_list, &sector.sector_node);
   }
 
   nsector = 0;
@@ -30,7 +34,7 @@ int swap_free_sectors() {
   struct list *node;
   size_t nfree_sectors = 0;
 
-  list_foreach(sector_taken_list, node) {
+  list_foreach(&sector_free_list, node) {
     ++nfree_sectors;
   }
 
@@ -50,10 +54,26 @@ int swap_out(struct page_info *pp) { //return 0 on succes, -1 on failure
    * 6 - free the page.
    */
 
-  /* first we shall write the page data to swap */
+  /* first we shall acquire a free sector */
+  if(list_is_empty(&sector_free_list)) {
+    panic("Out of smap memory space\n");
+  } 
+
+  struct sector_info * sector = container_of(list_pop_left(&sector_free_list), struct sector_info, sector_node);
+  /* now we acquire the lock */
+  spin_lock(&sector->lock);
+  /* now we write the data to disk */
   for(int s = 0 ; s < PAGE_SIZE ; s += SECTOR_SIZE) {
-//    disk_write(disks[SWAP_DISK_NUM], page2pa(pp), SECTOR_SIZE
+    /* SWAP_DISK_NUM describes disk id 1, so disks[1] should be swap */
+    /* page2pa(pp) + s should increase by 512 bytes each iteration */
+    /* sector_id is initialized by swap_init and describes PAGE_SIZE offsets on disk */
+    disk_write(disks[SWAP_DISK_NUM], (void *)page2pa(pp) + s, SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
   }
+
+  /* now we unlock */
+  spin_unlock(&sector->lock);
+
+
 
   panic("swap_out not implemented yet!\n");
   return -1;
