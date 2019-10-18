@@ -41,5 +41,8 @@ struct vma {
 	int is_shared;
 
 	void * page_addr;
+
+	/* save mapped pages */
+	struct list allocated_pages;
 };
 

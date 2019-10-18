@@ -343,6 +343,7 @@ void page_decref(struct page_info *pp)
 #ifndef USE_BIG_KERNEL_LOCK
   spin_lock(&buddy_lock);
 #endif
+	list_remove(&pp->pp_node);
   if (--pp->pp_ref == 0) {
 		page_free(pp);
 	}

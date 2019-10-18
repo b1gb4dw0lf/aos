@@ -52,8 +52,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
         page_insert(task->task_pml4, new_page, found->vm_base, page_flags);
 
         add_fifo(&page->lru_node);
-
-
+        list_push(&found->allocated_pages, &page->pp_node);
       } else {
         size_t num_of_pages = (found->vm_end - found->vm_base) / PAGE_SIZE;
 
@@ -66,6 +65,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
           page_insert(task->task_pml4, new_page, found->vm_base + (i * PAGE_SIZE), page_flags);
 
           add_fifo(&page->lru_node);
+          list_push(&found->allocated_pages, &page->pp_node);
         }
       }
       found->is_shared = 0;

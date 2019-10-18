@@ -4,6 +4,7 @@
 #include <kernel/mem.h>
 #include <kernel/vma.h>
 #include <kernel/dev/disk.h>
+#include <kernel/sched/task.h>
 
 /* sector counter */
 size_t nsector;
@@ -17,9 +18,6 @@ struct spinlock taken_list_lock;
 /* the sector lists */
 struct list sector_free_list;
 struct list sector_taken_list;
-
-struct spinlock sector_free_lock;
-struct spinlock sector_taken_lock;
 
 size_t nfree_sectors;
 
@@ -56,7 +54,9 @@ void swap_init() {
     sector->sector_id = j * 8;
 
     // Make free entry lookup cheap
+    spin_lock(&free_list_lock);
     list_insert_after(&sector_free_list, &sector->sector_node);
+    spin_unlock(&free_list_lock);
   }
 
   nfree_sectors = total_sector_info;
@@ -67,7 +67,7 @@ int swap_free_sectors() {
 }
 
 /* swap a page out by moving its contents to swap and freeing the page */
-int swap_out(struct task * task, void * addr) { //return 0 on succes, -1 on failure
+int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   /* steps below
    * 1 - Request swapping page (acquire lock, move to sector_taken list)
    * 2 - Write page contents to swap
@@ -79,10 +79,23 @@ int swap_out(struct task * task, void * addr) { //return 0 on succes, -1 on fail
    * 6 - free the page.
    */
 
-  struct vma * found = task_find_vma(task, addr);
+  /* first lets find the owning task , assume its just 1 for now */
+  struct task * task;
+  struct page_info * found;
+  struct vma * vma;
 
-  // This process shouldn't have that page
-  if (!found) return -1;
+  for(pid_t pid = 1 ; pid < (1<<16) ; pid++) { /* loop over all pids except pid 0 */
+    task = pid2task(pid, 0); /* acquire task */
+    if(!task) continue; /* continue if task doesnt exist */
+    
+    /* change pml4 to task */
+    load_pml4((struct page_table *) PADDR(task->task_pml4));
+    /* Try to see if page is allocated in any vma */
+    vma = container_of(page->pp_node, struct vma, allocated_pages);
+  }
+
+  /* restore kernel pml4 */
+  load_pml4((struct page_table *) PADDR(kernel_pml4));
 
   spin_lock(&free_list_lock);
 
@@ -97,10 +110,10 @@ int swap_out(struct task * task, void * addr) { //return 0 on succes, -1 on fail
   spin_unlock(&free_list_lock);
 
   /* now we write the data to disk */
-  sector->placeholder = (uintptr_t) found->vm_base;
-  disk_write(disks[SWAP_DISK_NUM], (void *) found->vm_base,
+//  sector->placeholder = (uintptr_t) found->vm_base; /* preferably write vma address here or something */
+  disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
-  unmap_page_range(task->task_pml4, found->vm_base, found->vm_end - found->vm_base);
+  //unmap_page_range(task->task_pml4, found->vm_base, found->vm_end - found->vm_base);
 
   /* insert sector into taken list */
   spin_lock(&taken_list_lock);
