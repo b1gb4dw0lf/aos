@@ -10,6 +10,8 @@
 size_t nsector;
 
 #define DISK_SIZE 134217728
+#define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
+
 
 /* we might have to lock the taken and free list for multiprocessing */
 struct spinlock free_list_lock;
@@ -20,6 +22,11 @@ struct list sector_free_list;
 struct list sector_taken_list;
 
 size_t nfree_sectors;
+
+struct find_info {
+  uintptr_t va;
+  struct page_info *page;
+};
 
 /* memory that stores the sector_info structs */
 struct sector_info * sectors;
@@ -66,6 +73,17 @@ int swap_free_sectors() {
   return nfree_sectors;
 }
 
+static int do_find_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker * walker) {
+  struct find_info * info = walker->udata;
+  struct page_info *page = pa2page((physaddr_t) STRIP_ENTRY(*entry));
+
+  if(page == info->page) {
+    info->va = base; /* is this correct? pls help kaan */
+  }
+
+  return 0;
+}
+
 /* swap a page out by moving its contents to swap and freeing the page */
 int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   /* steps below
@@ -79,9 +97,19 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
    * 6 - free the page.
    */
 
+  struct find_info info = {
+    .va = 0,
+    .page = page,
+  };
+
+  struct page_walker walker = {
+    .get_pte = do_find_pte,
+    .udata = &info,
+  };
+
   /* first lets find the owning task , assume its just 1 for now */
   struct task * task;
-  struct page_info * found;
+  int found;
   struct vma * vma;
 
   for(pid_t pid = 1 ; pid < (1<<16) ; pid++) { /* loop over all pids except pid 0 */
@@ -91,7 +119,13 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
     /* change pml4 to task */
     load_pml4((struct page_table *) PADDR(task->task_pml4));
     /* Try to see if page is allocated in any vma */
-    vma = container_of(page->pp_node, struct vma, allocated_pages);
+    vma = container_of(&page->pp_node, struct vma, allocated_pages);
+    /* do a pagetable walk to find the va of the page */
+    found = walk_user_pages(task->task_pml4, &walker);
+    if(info.va > 0) {
+      /* info.va == the va to map out in currently loaded pml4/task */
+      break;
+    }
   }
 
   /* restore kernel pml4 */
