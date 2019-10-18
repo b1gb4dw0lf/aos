@@ -77,7 +77,9 @@ static int do_find_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct 
   struct find_info * info = walker->udata;
   struct page_info *page = pa2page((physaddr_t) STRIP_ENTRY(*entry));
 
-  if(page == info->page) {
+  cprintf("Testing %p == %p = %d\n", page2pa(page), page2pa(info->page), page2pa(page) == page2pa(info->page));
+
+  if(page2pa(page) == page2pa(info->page)) {
     info->va = base; /* is this correct? pls help kaan */
   }
 
@@ -108,23 +110,28 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   };
 
   /* first lets find the owning task , assume its just 1 for now */
-  struct task * task;
+  struct task * task = NULL;
   int found;
-  struct vma * vma;
+  struct vma * vma = NULL;
+
+  cprintf("Swap Out in progress\n");
 
   for(pid_t pid = 1 ; pid < (1<<16) ; pid++) { /* loop over all pids except pid 0 */
     task = pid2task(pid, 0); /* acquire task */
+
     if(!task) continue; /* continue if task doesnt exist */
-    
+
     /* change pml4 to task */
-    load_pml4((struct page_table *) PADDR(task->task_pml4));
+    //load_pml4((struct page_table *) PADDR(task->task_pml4));
     /* Try to see if page is allocated in any vma */
     vma = container_of(&page->pp_node, struct vma, allocated_pages);
+    cprintf("VMA: %p %p\n", vma->vm_base, vma->vm_end);
     /* do a pagetable walk to find the va of the page */
     found = walk_page_range(task->task_pml4, vma->vm_base, vma->vm_end, &walker);
     if(info.va > 0) {
       /* info.va == the va to map out in currently loaded pml4/task */
       cprintf("va found at  %p\n", info.va);
+      cprintf("Found Owner: %d\n", task->task_pid);
       panic("stop here for now \n");
       break;
     }
@@ -133,7 +140,9 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   /* restore kernel pml4 */
   load_pml4((struct page_table *) PADDR(kernel_pml4));
 
-  spin_lock(&free_list_lock);
+  if (!task || !vma) return -1;
+
+    spin_lock(&free_list_lock);
 
   /* first we shall acquire a free sector */
   if(list_is_empty(&sector_free_list)) {
@@ -149,7 +158,7 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
 //  sector->placeholder = (uintptr_t) found->vm_base; /* preferably write vma address here or something */
   disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
-  //unmap_page_range(task->task_pml4, found->vm_base, found->vm_end - found->vm_base);
+  unmap_page_range(task->task_pml4, (void *) info.va, PAGE_SIZE);
 
   /* insert sector into taken list */
   spin_lock(&taken_list_lock);
@@ -160,7 +169,8 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
 }
 
 /* swap a page in by allocating a page and moving the swap contents to it */
-int swap_in(struct task * task, struct sector_info * sector, uint64_t flags) { //return 0(or return offset?) on succes, -1 on failure
+int swap_in(struct task * task, struct sector_info * sector, uint64_t flags) {
+  //return 0(or return offset?) on succes, -1 on failure
   /* steps below
    * 1 - page_alloc to request a new page 
    * 2 - write data from swap to the given page, save the location offset

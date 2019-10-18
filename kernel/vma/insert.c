@@ -77,6 +77,7 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	new_vma->is_shared = 0;
 	new_vma->page_addr = NULL;
 
+	list_init(&new_vma->allocated_pages);
   rb_node_init(&new_vma->vm_rb);
 
 	// Insert into task rb and task list

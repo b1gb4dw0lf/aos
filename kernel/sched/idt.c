@@ -272,6 +272,8 @@ void page_fault_handler(struct int_frame *frame)
 	fault_va = (void *)read_cr2();
 
 	if (get_free_page_count() < 512) {
+	  cprintf("Initiating Swap\n");
+    cprintf("Before Free Pages %d\n", get_free_page_count());
 	  struct page_info * page;
 	  struct list * page_node;
 
@@ -288,6 +290,7 @@ void page_fault_handler(struct int_frame *frame)
 	    swap_out(page);
 	  }
   	spin_unlock(&working_set_lock);
+    cprintf("After Free Pages %d\n", get_free_page_count());
 	}
 
   // If free pages are still below 512, activate oom killing
