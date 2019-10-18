@@ -113,6 +113,9 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   struct task * task = NULL;
   int found;
   struct vma * vma = NULL;
+  struct list * node;
+  struct list * pagenode;
+  struct page_info * pagef = NULL;
 
   cprintf("Swap Out in progress\n");
 
@@ -124,8 +127,19 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
     /* change pml4 to task */
     //load_pml4((struct page_table *) PADDR(task->task_pml4));
     /* Try to see if page is allocated in any vma */
-    vma = container_of(&page->pp_node, struct vma, allocated_pages);
-    cprintf("VMA: %p %p\n", vma->vm_base, vma->vm_end);
+
+    list_foreach(&task->task_mmap, node) {
+      vma = container_of(node, struct vma, vm_mmap);
+      list_foreach(&vma->allocated_pages, pagenode) {
+        pagef = container_of(pagenode, struct page_info, pp_node);
+        if(page2pa(pagef) == page2pa(page)) break;
+      }
+      if(page2pa(pagef) == page2pa(page)) {
+        break;
+      }
+    }
+
+    cprintf("page found in vma %p - %p\n", vma->vm_base, vma->vm_end);
     /* do a pagetable walk to find the va of the page */
     found = walk_page_range(task->task_pml4, vma->vm_base, vma->vm_end, &walker);
     if(info.va > 0) {
