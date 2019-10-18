@@ -133,10 +133,17 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
       list_foreach(&vma->allocated_pages, pagenode) {
         pagef = container_of(pagenode, struct page_info, pp_node);
         if(page2pa(pagef) == page2pa(page)) break;
+        else { 
+          pagef = NULL;
+        }
       }
       if(page2pa(pagef) == page2pa(page)) {
         break;
       }
+    }
+    if(!pagef) {
+      cprintf("page can not be found in any vma\n");
+      return -1;
     }
 
     cprintf("page found in vma %p - %p\n", vma->vm_base, vma->vm_end);
