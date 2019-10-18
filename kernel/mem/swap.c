@@ -124,6 +124,8 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
     found = walk_page_range(task->task_pml4, vma->vm_base, vma->vm_end, &walker);
     if(info.va > 0) {
       /* info.va == the va to map out in currently loaded pml4/task */
+      cprintf("va found at  %p\n", info.va);
+      panic("stop here for now \n");
       break;
     }
   }
