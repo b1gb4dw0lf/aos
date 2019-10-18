@@ -277,19 +277,21 @@ void page_fault_handler(struct int_frame *frame)
 	  struct page_info * page;
 	  struct list * page_node;
 
-    spin_lock(&working_set_lock);
 	  // Continue to swap until we have 2MB of free pages
     while (get_free_page_count() < 512) {
 	    // Well no pages in fifo somehow, nothing to do
-	    if (list_is_empty(&working_set)) {
-	      break;
-	    }
 	    // Get the unlucky page from fifo
-	    page_node = list_pop_left(&working_set);
-	    page = container_of(page_node, struct page_info, lru_node);
+      spin_lock(&working_set_lock);
+      if (list_is_empty(&working_set)) {
+        spin_unlock(&working_set_lock);
+        break;
+      }
+      page_node = list_pop_left(&working_set);
+      spin_unlock(&working_set_lock);
+
+      page = container_of(page_node, struct page_info, lru_node);
 	    swap_out(page);
 	  }
-  	spin_unlock(&working_set_lock);
     cprintf("After Free Pages %d\n", get_free_page_count());
 	}
 

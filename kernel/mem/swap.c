@@ -153,7 +153,6 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
       /* info.va == the va to map out in currently loaded pml4/task */
       cprintf("va found at  %p\n", info.va);
       cprintf("Found Owner: %d\n", task->task_pid);
-      panic("stop here for now \n");
       break;
     }
   }
@@ -163,7 +162,7 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
 
   if (!task || !vma) return -1;
 
-    spin_lock(&free_list_lock);
+  spin_lock(&free_list_lock);
 
   /* first we shall acquire a free sector */
   if(list_is_empty(&sector_free_list)) {
@@ -176,7 +175,7 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   spin_unlock(&free_list_lock);
 
   /* now we write the data to disk */
-//  sector->placeholder = (uintptr_t) found->vm_base; /* preferably write vma address here or something */
+  //  sector->placeholder = (uintptr_t) found->vm_base; /* preferably write vma address here or something */
   disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
   unmap_page_range(task->task_pml4, (void *) info.va, PAGE_SIZE);
