@@ -271,14 +271,26 @@ void page_fault_handler(struct int_frame *frame)
 	/* Read the CR2 register to find the faulting address. */
 	fault_va = (void *)read_cr2();
 
-	/* Handle kernel-mode page faults. */
-	/* LAB 3: your code here. */
-	if (!((frame->cs & 3) == 3)) {
-		/* fault triggered from kernel mode */
-		panic("Kernel mode page fault\n");
+	if (get_free_page_count() < 512) {
+	  struct page_info * page;
+	  struct list * page_node;
+
+    spin_lock(&working_set_lock);
+	  // Continue to swap until we have 2MB of free pages
+    while (get_free_page_count() < 512) {
+	    // Well no pages in fifo somehow, nothing to do
+	    if (list_is_empty(&working_set)) {
+	      break;
+	    }
+	    // Get the unlucky page from fifo
+	    page_node = list_pop_left(&working_set);
+	    page = container_of(page_node, struct page_info, lru_node);
+	    swap_out(page);
+	  }
+  	spin_unlock(&working_set_lock);
 	}
 
-  //If free pages are below activate oom killing 15% of total pages
+  // If free pages are still below 512, activate oom killing
   if (get_free_page_count() < 512) {
     cprintf("CPU %d - OOM Killing in process\n", this_cpu->cpu_id);
     struct task * unlucky_task = get_task_to_kill();
@@ -288,6 +300,13 @@ void page_fault_handler(struct int_frame *frame)
     cprintf("CPU %d - Killing Task %d\n", this_cpu->cpu_id, unlucky_task->task_pid);
     task_destroy(unlucky_task);
   }
+
+	/* Handle kernel-mode page faults. */
+	/* LAB 3: your code here. */
+	if (!((frame->cs & 3) == 3)) {
+		/* fault triggered from kernel mode */
+		panic("Kernel mode page fault\n");
+	}
 
 	/* We have already handled kernel-mode exceptions, so if we get here, the
 	 * page fault has happened in user mode.
