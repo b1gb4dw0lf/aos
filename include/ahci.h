@@ -9,6 +9,8 @@
 
 #define HBA_PxIS_TFES (1 << 30)
 
+#define HBA_PxSCTL_DET_COMRESET (1 << 0)
+
 struct hba_prdt {
 	uint64_t data_base;
 	uint32_t _0;
