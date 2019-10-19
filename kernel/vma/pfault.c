@@ -27,7 +27,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
   struct page_info * page = page_lookup(task->task_pml4, va, NULL);
 
   /* LAB 5: your code here. */
-  if (page && 0) {
+  if (page && vm_flags & 2) {
     uint64_t page_flags = 0;
 
     if(found->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
@@ -41,8 +41,6 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     cprintf("Cow? %p\n", va);
 
     if (!(page_flags & vm_flags)) return -1;
-
-    struct page_info * page = page_lookup(task->task_pml4, found->vm_base, NULL);
 
     if (page->pp_ref > 1) { // Shared page create a new one
       struct page_info * new_page;
@@ -92,9 +90,17 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     #endif
     void * base = !page_aligned((uintptr_t)va) ? ROUNDDOWN(va, PAGE_SIZE) : va;
 
-    struct sector_info * sector = get_swap_sector(base);
+    struct list * node;
+    struct sector_info * sector_tmp, * sector = NULL;
+    list_foreach(&found->swap_list, node) {
+      sector_tmp = container_of(node, struct sector_info, swap_node);
+      if (sector_tmp->placeholder == (uintptr_t) base) {
+        sector = sector_tmp;
+        break;
+      }
+    }
 
-    if (sector != NULL) {
+    if (sector) {
       return swap_in(this_cpu->cpu_task, sector, found);
     }
 

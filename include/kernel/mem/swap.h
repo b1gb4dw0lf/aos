@@ -16,6 +16,7 @@ struct sector_info {
 	uint64_t placeholder;
 	uint64_t sector_id;
 	struct list sector_node;
+	struct list swap_node;
 };
 
 void swap_init(void);

@@ -123,7 +123,6 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
   struct page_info * new_page = page_alloc(ALLOC_HUGE);
 
   if (!new_page) {
-    warn("Can't allocate a huge page\n");
     return 0;
   }
 

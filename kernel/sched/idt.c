@@ -272,7 +272,6 @@ void page_fault_handler(struct int_frame *frame)
 	fault_va = (void *)read_cr2();
 
 	if (get_free_page_count() < 512) {
-	  cprintf("House Keeping!\n");
 	  struct page_info * page;
 	  struct list * page_node;
 

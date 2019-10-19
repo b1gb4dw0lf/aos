@@ -44,5 +44,7 @@ struct vma {
 
 	/* save mapped pages */
 	struct list allocated_pages;
+
+	struct list swap_list;
 };
 
