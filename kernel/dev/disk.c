@@ -10,6 +10,11 @@ int disk_poll(struct disk *disk)
 	return disk->ops->poll(disk);
 }
 
+int disk_stat(struct disk *disk, struct disk_stat *stat)
+{
+	return disk->ops->stat(disk, stat);
+}
+
 int64_t disk_read(struct disk *disk, void *buf, size_t count, uint64_t addr)
 {
 	return disk->ops->read(disk, buf, count, addr);
