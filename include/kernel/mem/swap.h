@@ -1,5 +1,7 @@
 #pragma once
 
+#include <kernel/vma.h>
+
 #define MAX_SECTORS (128 * 1024 * 1024) / 512 //disksize / sector size
 #define MAX_PAGES (128 * 1024 * 1024) / 4096
 #define SWAP_DISK_NUM 1 //swap.img disknumber for the disks variable
@@ -18,6 +20,6 @@ struct sector_info {
 
 void swap_init(void);
 int swap_out(struct page_info * page);
-int swap_in(struct task * task, struct sector_info * sector, uint64_t flags);
+int swap_in(struct task * task, struct sector_info * sector, struct vma * vma);
 int swap_free_sectors(void);
 struct sector_info * get_swap_sector(void * addr);

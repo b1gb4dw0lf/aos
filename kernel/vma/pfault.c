@@ -24,19 +24,21 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
   int vm_flags = 0;
   vm_flags |= flags & 2 ? PAGE_WRITE : PAGE_PRESENT;
 
-  uint64_t page_flags = 0;
-
-  if(found->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
-  if(found->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
-  if(!(found->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
-  page_flags |= PAGE_USER;
-
   struct page_info * page = page_lookup(task->task_pml4, va, NULL);
 
   /* LAB 5: your code here. */
-  if (page) {
+  if (page && 0) {
+    uint64_t page_flags = 0;
+
+    if(found->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
+    if(found->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
+    if(!(found->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
+    page_flags |= PAGE_USER;
+
     // If it is mapped, it is probably a write on shared
     // address check flags and create a new entry?
+
+    cprintf("Cow? %p\n", va);
 
     if (!(page_flags & vm_flags)) return -1;
 
@@ -88,14 +90,13 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
       }
     }
     #endif
-
-    struct sector_info * sector = get_swap_sector(found->vm_base);
-
-    if (sector) {
-      return swap_in(this_cpu->cpu_task, sector, page_flags);
-    }
-
     void * base = !page_aligned((uintptr_t)va) ? ROUNDDOWN(va, PAGE_SIZE) : va;
+
+    struct sector_info * sector = get_swap_sector(base);
+
+    if (sector != NULL) {
+      return swap_in(this_cpu->cpu_task, sector, found);
+    }
 
     return populate_vma_range(task, base, PAGE_SIZE, vm_flags);
   }

@@ -25,6 +25,7 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 	if (vma->vm_src && vma->vm_len > 0) {
     // Get source file
 
+    cprintf("Total Len %d\n", vma->vm_len);
 
     // Real base can be 0x80020 while the base is 0x80000
     // So depending on the position of the page which can be get by
@@ -32,7 +33,7 @@ int do_populate_vma(struct task *task, void *base, size_t size,
     // to the right, then we will shift the copy dest or src by one too
 
     void * dst_base = vma->real_base >= base ? vma->real_base : base;
-    void * src_base = vma->vm_src +  + (base - vma->vm_base);
+    void * src_base = vma->vm_src + (dst_base - vma->real_base);
 
     // Most of the time it'll be page size, but the end section will differ
     size_t copy_size = 0;
@@ -52,9 +53,11 @@ int do_populate_vma(struct task *task, void *base, size_t size,
       size_t remaining_len = vma->vm_len - (base - vma->real_base);
       copy_size = remaining_len > PAGE_SIZE ? PAGE_SIZE : remaining_len;
     }
+    cprintf("Copying from %p to %p for %d real base: %p\n", src_base, dst_base, copy_size, vma->real_base);
 
     load_pml4((struct page_table *) PADDR(task->task_pml4));
     memcpy(dst_base, src_base, copy_size);
+    cprintf("Copying done\n");
     load_pml4((struct page_table *) PADDR(kernel_pml4));
 	}
 

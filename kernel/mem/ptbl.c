@@ -118,10 +118,17 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
     if (flags != entry_flags) return 0;
   }
 
-  cprintf("merging entry %p, *entry %p,  base %p, end %p\n", entry, *entry, base, end);
 
   // Allocate a huge page
   struct page_info * new_page = page_alloc(ALLOC_HUGE);
+
+  if (!new_page) {
+    warn("Can't allocate a huge page\n");
+    return 0;
+  }
+
+  cprintf("merging entry %p, *entry %p,  base %p, end %p\n", entry, *entry, base, end);
+
   // Increase the ref
   new_page->pp_ref += 1;
 
@@ -141,7 +148,6 @@ int ptbl_merge(physaddr_t *entry, uintptr_t base, uintptr_t end,
   page_decref(old_page);
 
   *entry = page2pa(new_page) | PAGE_PRESENT | PAGE_HUGE | flags;
-
   return 0;
 }
 

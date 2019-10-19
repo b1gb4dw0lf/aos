@@ -272,13 +272,12 @@ void page_fault_handler(struct int_frame *frame)
 	fault_va = (void *)read_cr2();
 
 	if (get_free_page_count() < 512) {
-	  cprintf("Initiating Swap\n");
-    cprintf("Before Free Pages %d\n", get_free_page_count());
+	  cprintf("House Keeping!\n");
 	  struct page_info * page;
 	  struct list * page_node;
 
-	  // Continue to swap until we have 2MB of free pages
-    while (get_free_page_count() < 512) {
+	  // Continue to swap until we have 4MB of free pages
+    while (get_free_page_count() < 1024) {
 	    // Well no pages in fifo somehow, nothing to do
 	    // Get the unlucky page from fifo
       spin_lock(&working_set_lock);
@@ -292,11 +291,10 @@ void page_fault_handler(struct int_frame *frame)
       page = container_of(page_node, struct page_info, lru_node);
 	    swap_out(page);
 	  }
-    cprintf("After Free Pages %d\n", get_free_page_count());
 	}
 
   // If free pages are still below 512, activate oom killing
-  if (get_free_page_count() < 512) {
+  if (get_free_page_count() < 256) {
     cprintf("CPU %d - OOM Killing in process\n", this_cpu->cpu_id);
     struct task * unlucky_task = get_task_to_kill();
     if (this_cpu->cpu_task == unlucky_task) {

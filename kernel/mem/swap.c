@@ -61,8 +61,6 @@ void swap_init() {
     // Keep the sector id
     sector->sector_id = j * 8;
 
-    if (sector->sector_id == 0) continue;
-
     // Make free entry lookup cheap
     spin_lock(&free_list_lock);
     list_insert_after(&sector_free_list, &sector->sector_node);
@@ -81,7 +79,6 @@ static int do_find_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct 
   struct page_info *page = pa2page((physaddr_t) STRIP_ENTRY(*entry));
 
   if(page2pa(page) == page2pa(info->page)) {
-    cprintf("Testing %p == %p = %d\n", page2pa(page), page2pa(info->page), page2pa(page) == page2pa(info->page));
     info->va = base; /* is this correct? pls help kaan */
   }
 
@@ -119,8 +116,6 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   struct list * pagenode;
   struct page_info * pagef = NULL;
 
-  cprintf("Swap Out in progress\n");
-
   for(pid_t pid = 1 ; pid < (1<<16) ; pid++) { /* loop over all pids except pid 0 */
     task = pid2task(pid, 0); /* acquire task */
 
@@ -135,7 +130,7 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
       list_foreach(&vma->allocated_pages, pagenode) {
         pagef = container_of(pagenode, struct page_info, pp_node);
         if(page2pa(pagef) == page2pa(page)) break;
-        else { 
+        else {
           pagef = NULL;
         }
       }
@@ -148,13 +143,10 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
       return -1;
     }
 
-    cprintf("page found in vma %p - %p\n", vma->vm_base, vma->vm_end);
     /* do a pagetable walk to find the va of the page */
     found = walk_page_range(task->task_pml4, vma->vm_base, vma->vm_end, &walker);
     if(info.va > 0) {
       /* info.va == the va to map out in currently loaded pml4/task */
-      cprintf("va found at  %p\n", info.va);
-      cprintf("Found Owner: %d\n", task->task_pid);
       break;
     }
   }
@@ -170,13 +162,13 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   if(list_is_empty(&sector_free_list)) {
     spin_unlock(&free_list_lock);
     panic("Out of smap memory space\n");
-  } 
+  }
+
+  list_remove(&page->pp_node);
 
   struct list * free_node = list_pop_left(&sector_free_list);
   struct sector_info * sector = container_of(free_node, struct sector_info, sector_node);
   spin_unlock(&free_list_lock);
-
-  cprintf("Write to sector: %d\n", sector->sector_id);
 
   /* now we write the data to disk */
   sector->placeholder = (uintptr_t) info.va; /* preferably write vma address here or something */
@@ -191,8 +183,6 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   int res = disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
                        PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
-  cprintf("Wrote: %d\n", res);
-
   unmap_page_range(task->task_pml4, (void *) info.va, PAGE_SIZE);
 
   /* insert sector into taken list */
@@ -200,11 +190,13 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   list_insert_after(&sector_taken_list, &sector->sector_node);
   spin_unlock(&taken_list_lock);
 
+  tlb_invalidate(task->task_pml4, (void *) info.va);
+
   return 0;
 }
 
 /* swap a page in by allocating a page and moving the swap contents to it */
-int swap_in(struct task * task, struct sector_info * sector, uint64_t flags) {
+int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
   //return 0(or return offset?) on succes, -1 on failure
   /* steps below
    * 1 - page_alloc to request a new page 
@@ -231,13 +223,33 @@ int swap_in(struct task * task, struct sector_info * sector, uint64_t flags) {
 
   /* read page from disk */
   page = page_alloc(ALLOC_ZERO);
+
   disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
+  int poll_res = 0;
+  do {
+    poll_res = disk_poll(disks[SWAP_DISK_NUM]);
+  } while (!poll_res);
+
+  int written = disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
+            PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
+  cprintf("Swapped In: %d bytes at %p\n", written, sector->placeholder);
+
+  uint64_t flags = 0;
+  if(vma->vm_flags & VM_READ) flags |= PAGE_PRESENT;
+  if(vma->vm_flags & VM_WRITE) flags |= PAGE_WRITE;
+  if(!(vma->vm_flags & VM_EXEC)) flags |= PAGE_NO_EXEC;
+  flags |= PAGE_USER;
+
   page_insert(task->task_pml4, page, (void *) sector->placeholder, flags);
+  add_fifo(&page->lru_node);
+  list_insert_after(&vma->allocated_pages, &page->pp_node);
 
   /* add sector to free list */
   spin_lock(&free_list_lock);
-  list_push_left(&sector_free_list, &sector->sector_node);
+  list_insert_after(&sector_free_list, &sector->sector_node);
   spin_unlock(&free_list_lock);
 
   return 0;
@@ -247,14 +259,15 @@ struct sector_info * get_swap_sector(void * addr) {
   struct list *node, *next;
   struct sector_info * sector;
 
-  spin_lock(&free_list_lock);
-  list_foreach_safe(&sector_free_list, node, next) {
+  spin_lock(&taken_list_lock);
+  list_foreach_safe(&sector_taken_list, node, next) {
     sector = container_of(node, struct sector_info, sector_node);
     if (sector->placeholder == (uintptr_t) addr) {
-      spin_unlock(&free_list_lock);
+      spin_unlock(&taken_list_lock);
       return sector;
     }
   }
-  spin_unlock(&free_list_lock);
+  spin_unlock(&taken_list_lock);
+
   return NULL;
 }
