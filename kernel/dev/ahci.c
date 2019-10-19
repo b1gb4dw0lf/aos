@@ -21,25 +21,57 @@ void start_cmd(volatile struct hba_port *port)
 	/* Wait until CR is clear. */
 	while (port->cmd & HBA_PxCMD_CR);
 
-	/* Set FRE and ST. */
-	port->cmd |= HBA_PxCMD_FRE | HBA_PxCMD_ST;
+	/* Set ST and FRE. */
+	port->cmd |= HBA_PxCMD_ST;
+	port->cmd |= HBA_PxCMD_FRE;
 }
 
 void stop_cmd(volatile struct hba_port *port)
 {
-	/* Clear ST. */
+	/* Clear ST and FRE. */
 	port->cmd &= ~HBA_PxCMD_ST;
+	port->cmd &= ~HBA_PxCMD_FRE;
 
 	/* Wait until FR and CR are cleared. */
 	while (port->cmd & (HBA_PxCMD_FR | HBA_PxCMD_CR));
-
-	/* Clear FR. */
-	port->cmd &= ~HBA_PxCMD_FRE;
 }
 
 void port_rebase(volatile struct hba_port *port, int port_no)
 {
+	struct hba_cmd_hdr *hdr;
+	struct page_info *page;
+	char *p;
+	size_t i;
+
+	page = page_alloc(ALLOC_HUGE | ALLOC_ZERO);
+	p = page2kva(page);
+
 	port->int_stat = 0;
+
+	port->sata_ctl |= HBA_PxSCTL_DET_COMRESET;
+
+	stop_cmd(port);
+
+	/* Set up a 1 kiB buffer for the port. */
+	port->cmd_base = PADDR(p);
+	p += 1024;
+
+	/* Set up a 256 B buffer for the FIS. */
+	port->fis_base = PADDR(p);
+	p += 256;
+
+	hdr = (struct hba_cmd_hdr *)KADDR(port->cmd_base);
+
+	/* Set up a 256 B buffer for each command entry in the command
+	 * table.
+	 */
+	for (i = 0; i < 32; ++i) {
+		hdr->prdt_len = 8;
+		hdr->cmd_base = PADDR(p);
+		p += 256;
+	}
+
+	start_cmd(port);
 }
 
 int find_cmdslot(volatile struct hba_port *port)
@@ -458,6 +490,8 @@ int ahci_probe(struct pci_dev *dev)
 {
 	uint32_t base, size;
 	volatile struct hba_mem *abar;
+	size_t i;
+	size_t nslots;
 
 	pci_read_bar(&base, &size, dev, 5);
 
@@ -467,7 +501,7 @@ int ahci_probe(struct pci_dev *dev)
 		return -1;
 	}
 
-	size_t i;
+	nslots = ((abar->cap  >> 8) & 0x1f) + 1;
 
 	for (i = 0; i < 32; ++i) {
 		ahci_enum_device(abar, abar->ports + i, i);
