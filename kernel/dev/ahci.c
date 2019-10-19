@@ -10,7 +10,7 @@
 
 #define HBA_PORT_IPM_ACTIVE 1
 #define HBA_PORT_DET_PRESENT 3
- 
+
 static struct pci_device_id compat[] = {
 	PCI_MATCH_CLASS(1, 6),
 	{},
@@ -39,7 +39,7 @@ void stop_cmd(volatile struct hba_port *port)
 
 void port_rebase(volatile struct hba_port *port, int port_no)
 {
-	port->int_stat = 0;
+  port->int_stat = 0;
 }
 
 int find_cmdslot(volatile struct hba_port *port)
@@ -301,15 +301,15 @@ struct disk_ops ahci_ops = {
 static int check_type(volatile struct hba_port *port)
 {
 	uint32_t ssts = port->sata_stat;
- 
+
 	uint8_t ipm = (ssts >> 8) & 0x0F;
 	uint8_t det = ssts & 0x0F;
- 
+
 	if (det != HBA_PORT_DET_PRESENT)	// Check drive status
 		return AHCI_DEV_NULL;
 	if (ipm != HBA_PORT_IPM_ACTIVE)
 		return AHCI_DEV_NULL;
- 
+
 	switch (port->sig)
 	{
 	case SATA_SIG_ATAPI:
@@ -350,7 +350,7 @@ int ahci_probe(struct pci_dev *dev)
 		if (!(abar->pts_impl & (1 << i))) {
 			continue;
 		}
-	
+
 		/* Get the device type. */
 		dev_type = check_type(abar->ports + i);
 

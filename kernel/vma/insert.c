@@ -71,9 +71,10 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 	new_vma->vm_src = src;
 	new_vma->vm_len = len;
 	new_vma->vm_name = name;
-	new_vma->vm_base = ROUNDDOWN(addr, PAGE_SIZE);
-	new_vma->vm_end = ROUNDUP(addr + size, PAGE_SIZE);
+	new_vma->vm_base = !page_aligned((uintptr_t)addr) ? ROUNDDOWN(addr, PAGE_SIZE) : addr;
+	new_vma->vm_end = !page_aligned((uintptr_t)addr + size) ? ROUNDUP(addr + size, PAGE_SIZE) : addr + size;
 	new_vma->real_base = addr;
+
 	new_vma->is_shared = 0;
 	new_vma->page_addr = NULL;
 

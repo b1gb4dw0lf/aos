@@ -22,9 +22,40 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 	    PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC | PAGE_USER);
 
 	// If this is not an anonymous vma
-	if (vma->vm_src) {
+	if (vma->vm_src && vma->vm_len > 0) {
     // Get source file
-    memcpy(vma->real_base, vma->vm_src, vma->vm_len);
+
+
+    // Real base can be 0x80020 while the base is 0x80000
+    // So depending on the position of the page which can be get by
+    // base - vma.vm_base, which means if the requested base is one page
+    // to the right, then we will shift the copy dest or src by one too
+
+    void * dst_base = vma->real_base >= base ? vma->real_base : base;
+    void * src_base = vma->vm_src +  + (base - vma->vm_base);
+
+    // Most of the time it'll be page size, but the end section will differ
+    size_t copy_size = 0;
+
+    // First piece
+    if (dst_base == vma->real_base) {
+
+      if (vma->vm_len > (PAGE_SIZE - (vma->real_base - vma->vm_base))) {
+        copy_size = PAGE_SIZE - (vma->real_base - vma->vm_base);
+      } else {
+        copy_size = vma->vm_len;
+      }
+
+    } else {
+      // Middle of the file
+      // End of the file
+      size_t remaining_len = vma->vm_len - (base - vma->real_base);
+      copy_size = remaining_len > PAGE_SIZE ? PAGE_SIZE : remaining_len;
+    }
+
+    load_pml4((struct page_table *) PADDR(task->task_pml4));
+    memcpy(dst_base, src_base, copy_size);
+    load_pml4((struct page_table *) PADDR(kernel_pml4));
 	}
 
 	uint64_t page_flags = 0;

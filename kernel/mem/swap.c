@@ -5,6 +5,7 @@
 #include <kernel/vma.h>
 #include <kernel/dev/disk.h>
 #include <kernel/sched/task.h>
+#include <ata.h>
 
 /* sector counter */
 size_t nsector;
@@ -60,6 +61,8 @@ void swap_init() {
     // Keep the sector id
     sector->sector_id = j * 8;
 
+    if (sector->sector_id == 0) continue;
+
     // Make free entry lookup cheap
     spin_lock(&free_list_lock);
     list_insert_after(&sector_free_list, &sector->sector_node);
@@ -77,9 +80,8 @@ static int do_find_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct 
   struct find_info * info = walker->udata;
   struct page_info *page = pa2page((physaddr_t) STRIP_ENTRY(*entry));
 
-  cprintf("Testing %p == %p = %d\n", page2pa(page), page2pa(info->page), page2pa(page) == page2pa(info->page));
-
   if(page2pa(page) == page2pa(info->page)) {
+    cprintf("Testing %p == %p = %d\n", page2pa(page), page2pa(info->page), page2pa(page) == page2pa(info->page));
     info->va = base; /* is this correct? pls help kaan */
   }
 
@@ -174,10 +176,23 @@ int swap_out(struct page_info * page) { //return 0 on succes, -1 on failure
   struct sector_info * sector = container_of(free_node, struct sector_info, sector_node);
   spin_unlock(&free_list_lock);
 
+  cprintf("Write to sector: %d\n", sector->sector_id);
+
   /* now we write the data to disk */
-  //  sector->placeholder = (uintptr_t) found->vm_base; /* preferably write vma address here or something */
+  sector->placeholder = (uintptr_t) info.va; /* preferably write vma address here or something */
   disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
+  int poll_res = 0;
+  do {
+    poll_res = disk_poll(disks[SWAP_DISK_NUM]);
+  } while (!poll_res);
+
+  int res = disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
+                       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
+  cprintf("Wrote: %d\n", res);
+
   unmap_page_range(task->task_pml4, (void *) info.va, PAGE_SIZE);
 
   /* insert sector into taken list */
@@ -216,7 +231,8 @@ int swap_in(struct task * task, struct sector_info * sector, uint64_t flags) {
 
   /* read page from disk */
   page = page_alloc(ALLOC_ZERO);
-  disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page), PAGE_SIZE / SECTOR_SIZE, sector->sector_id * PAGE_SIZE); 
+  disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
+      PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
   page_insert(task->task_pml4, page, (void *) sector->placeholder, flags);
 
   /* add sector to free list */

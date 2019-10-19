@@ -37,12 +37,12 @@ struct vma *merge_vmas(struct task *task, struct vma *vma)
 	right_vma = task_find_vma(task, vma->vm_base + PAGE_SIZE + 1);
 
 
-	if (left_vma && (left_vma->vm_end == vma->vm_base) && (left_vma->vm_flags == vma->vm_flags)) {
+	if (left_vma && !left_vma->vm_src && (left_vma->vm_end == vma->vm_base) && (left_vma->vm_flags == vma->vm_flags)) {
     cprintf("Left? %c %p - %p\n", left_vma ? 'Y':'N', left_vma->vm_base, left_vma->vm_end);
     vma = merge_vma(task, left_vma, vma);
 	}
 
-  if (right_vma && (right_vma->vm_base == vma->vm_end) && (right_vma->vm_flags == vma->vm_flags)) {
+  if (right_vma && !right_vma->vm_src && (right_vma->vm_base == vma->vm_end) && (right_vma->vm_flags == vma->vm_flags)) {
     cprintf("Right? %c %p - %p\n", right_vma ? 'Y':'N', right_vma->vm_base, right_vma->vm_end);
     vma = merge_vma(task, vma, right_vma);
   }

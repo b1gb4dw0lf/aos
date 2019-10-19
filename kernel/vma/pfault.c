@@ -31,11 +31,12 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
   if(!(found->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
   page_flags |= PAGE_USER;
 
+  struct page_info * page = page_lookup(task->task_pml4, va, NULL);
+
   /* LAB 5: your code here. */
-  if (found->page_addr) {
+  if (page) {
     // If it is mapped, it is probably a write on shared
     // address check flags and create a new entry?
-
 
     if (!(page_flags & vm_flags)) return -1;
 
@@ -94,7 +95,9 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
       return swap_in(this_cpu->cpu_task, sector, page_flags);
     }
 
-    return populate_vma_range(task, found->vm_base, found->vm_end - found->vm_base, vm_flags);
+    void * base = !page_aligned((uintptr_t)va) ? ROUNDDOWN(va, PAGE_SIZE) : va;
+
+    return populate_vma_range(task, base, PAGE_SIZE, vm_flags);
   }
 }
 
