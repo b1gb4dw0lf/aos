@@ -27,6 +27,9 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
   struct page_info * page = page_lookup(task->task_pml4, va, NULL);
 
   /* LAB 5: your code here. */
+
+  // If page exists and it is a protection fault
+  // then it is most likely a cow fault
   if (page && (flags & 1)) {
     uint64_t page_flags = 0;
 
@@ -35,14 +38,10 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     if(!(found->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
     page_flags |= PAGE_USER;
 
-    // If it is mapped, it is probably a write on shared
-    // address check flags and create a new entry?
-
-
+    // Check if flags are ok
     if (!(page_flags & vm_flags)) return -1;
 
     if (page->pp_ref > 1) { // Shared page create a new one
-      cprintf("%d - Cow New %p\n", task->task_pid, va);
 
       struct page_info * new_page;
       if (page->pp_order == BUDDY_2M_PAGE) {
@@ -73,7 +72,6 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
       found->is_shared = 0;
 
     } else { // Only one ref change perms
-      cprintf("%d - Cow Perm %p\n", task->task_pid, va);
       protect_region(task->task_pml4, found->vm_base,
                      found->vm_end - found->vm_base, page_flags);
     }
@@ -106,7 +104,6 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
       return swap_in(this_cpu->cpu_task, sector, found);
     }
 
-    cprintf("Populate\n");
     return populate_vma_range(task, base, PAGE_SIZE, vm_flags);
   }
 }
