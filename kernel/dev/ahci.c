@@ -48,8 +48,6 @@ void port_rebase(volatile struct hba_port *port, int port_no)
 
 	port->int_stat = 0;
 
-	port->sata_ctl |= HBA_PxSCTL_DET_COMRESET;
-
 	stop_cmd(port);
 
 	/* Set up a 1 kiB buffer for the port. */
