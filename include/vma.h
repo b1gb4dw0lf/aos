@@ -46,5 +46,7 @@ struct vma {
 	struct list allocated_pages;
 
 	struct list swap_list;
+
+	struct list page_node;
 };
 

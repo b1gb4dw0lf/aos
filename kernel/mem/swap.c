@@ -145,6 +145,7 @@ int swap_out(struct page_info * page) {
   }
 
   list_remove(&page->pp_node);
+  list_remove(&vma->page_node);
 
   struct list * free_node = list_pop_left(&sector_free_list);
   struct sector_info * sector = container_of(free_node, struct sector_info, sector_node);
@@ -215,6 +216,7 @@ int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
 
   /* add sector to free list */
   spin_lock(&free_list_lock);
+  list_insert_after(&page->vma_list, &vma->page_node);
   add_fifo(&page->lru_node);
   list_insert_after(&vma->allocated_pages, &page->pp_node);
   list_insert_after(&sector_free_list, &sector->sector_node);

@@ -52,6 +52,9 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
         // 3 - Change the corresponding entry
         page_insert(task->task_pml4, new_page, found->vm_base, page_flags);
 
+        list_remove(&found->page_node);
+        list_insert_after(&new_page->vma_list, &found->page_node);
+
         add_fifo(&page->lru_node);
         list_push(&found->allocated_pages, &page->pp_node);
       } else {
@@ -64,6 +67,9 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
           memcpy(page2kva(new_page), found->vm_base + (i * PAGE_SIZE), PAGE_SIZE);
           // 3 - Change the corresponding entry
           page_insert(task->task_pml4, new_page, found->vm_base + (i * PAGE_SIZE), page_flags);
+
+          list_remove(&found->page_node);
+          list_insert_after(&new_page->vma_list, &found->page_node);
 
           add_fifo(&page->lru_node);
           list_push(&found->allocated_pages, &page->pp_node);

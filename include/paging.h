@@ -37,6 +37,7 @@ struct page_info {
 
 	struct list lru_node;
 
+	struct list vma_list;
 };
 #endif /* !__ASSEMBLER__ */
 

@@ -315,6 +315,7 @@ void page_free(struct page_info *pp)
 #endif
 
   list_init(&pp->pp_node);
+  list_init(&pp->vma_list);
 
   if (pp->lru_node.next) {
     spin_lock(&working_set_lock);

@@ -86,6 +86,7 @@ int do_populate_vma(struct task *task, void *base, size_t size,
 
     if (!page) continue;
 
+    list_insert_after(&page->vma_list, &vma->page_node);
     add_fifo(&page->lru_node);
 		list_push(&vma->allocated_pages, &page->pp_node);
   }
