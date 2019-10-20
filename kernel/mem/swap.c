@@ -132,8 +132,8 @@ int swap_out(struct page_info * page) {
   spin_unlock(&free_list_lock);
 
   /* now we write the data to disk */
-  sector->placeholder = (uintptr_t) info.va; /* preferably write vma address here or something */
   sector->vma = vma;
+  sector->ref_count = page->pp_ref;
   disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
@@ -155,7 +155,7 @@ int swap_out(struct page_info * page) {
 }
 
 /* swap a page in by allocating a page and moving the swap contents to it */
-int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
+int swap_in(struct task * task, void * addr, struct sector_info * sector, struct vma * vma) {
   //return 0(or return offset?) on succes, -1 on failure
   /* steps below
    * 1 - page_alloc to request a new page 
@@ -171,7 +171,12 @@ int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
   struct list * node;
   struct page_info * page;
 
-  list_remove(&sector->sector_node);
+  if (sector->ref_count == 1) {
+    sector->ref_count--;
+    list_remove(&sector->sector_node);
+  } else {
+    sector->ref_count--;
+  }
 
   /* read page from disk */
   page = page_alloc(ALLOC_ZERO);
@@ -200,7 +205,7 @@ int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
     page->vma = sector->vma;
   }
 
-  page_insert(task->task_pml4, page, (void *) sector->placeholder, flags);
+  page_insert(task->task_pml4, page, addr, flags);
 
   /* add sector to free list */
   spin_lock(&free_list_lock);

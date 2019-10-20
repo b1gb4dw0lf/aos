@@ -13,7 +13,6 @@ struct sector_info {
                            * per-cluster lock
                            * descriptor can be used to retrieve mapping vma's
                   				 */
-	uint64_t placeholder; // Probably deprecated since we are using reverse mapping
 	uint64_t sector_id;
 
   // This has nothing to do with identification of shared pages
@@ -30,5 +29,5 @@ struct sector_info {
 
 void swap_init(void);
 int swap_out(struct page_info * page);
-int swap_in(struct task * task, struct sector_info * sector, struct vma * vma);
+int swap_in(struct task * task, void * addr, struct sector_info * sector, struct vma * vma);
 int swap_free_sectors(void);

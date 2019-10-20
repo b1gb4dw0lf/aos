@@ -99,7 +99,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
 
     if (sector) {
       cprintf("Swap In\n");
-      return swap_in(this_cpu->cpu_task, sector, found);
+      return swap_in(this_cpu->cpu_task, base, sector, found);
     }
 
     return populate_vma_range(task, base, PAGE_SIZE, vm_flags);
