@@ -23,4 +23,3 @@ void swap_init(void);
 int swap_out(struct page_info * page);
 int swap_in(struct task * task, struct sector_info * sector, struct vma * vma);
 int swap_free_sectors(void);
-struct sector_info * get_swap_sector(void * addr);

@@ -18,3 +18,4 @@
 #include <kernel/mem/walk.h>
 #include <kernel/mem/lru.h>
 #include <kernel/mem/swap.h>
+#include <kernel/mem/swap_walkers.h>

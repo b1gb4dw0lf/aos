@@ -55,7 +55,7 @@ void swap_init() {
   }
 
   struct sector_info * sector;
-  for (size_t j = 0; j < total_sector_info; ++j) {
+  for (size_t j = 1; j < total_sector_info; ++j) {
     sector = &sectors[j];
 
     // Keep the sector id
@@ -165,6 +165,9 @@ int swap_out(struct page_info * page) {
                        PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
   unmap_page_range(task->task_pml4, (void *) info.va, PAGE_SIZE);
+  update_table_entries(task, info.va, info.va + PAGE_SIZE, sector->sector_id,
+      page->pp_order == BUDDY_2M_PAGE);
+
   list_insert_after(&vma->swap_list, &sector->swap_node);
 
   tlb_invalidate(task->task_pml4, (void *) info.va);
@@ -223,21 +226,4 @@ int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
   spin_unlock(&free_list_lock);
 
   return 0;
-}
-
-struct sector_info * get_swap_sector(void * addr) {
-  struct list *node, *next;
-  struct sector_info * sector;
-
-  spin_lock(&taken_list_lock);
-  list_foreach_safe(&sector_taken_list, node, next) {
-    sector = container_of(node, struct sector_info, sector_node);
-    if (sector->placeholder == (uintptr_t) addr) {
-      spin_unlock(&taken_list_lock);
-      return sector;
-    }
-  }
-  spin_unlock(&taken_list_lock);
-
-  return NULL;
 }

@@ -104,7 +104,7 @@ static int pdir_walk_range(struct page_table *pdir, uintptr_t base,
       if (ret == -1) return -1;
     }
 
-    if ((*entry & PAGE_PRESENT) && !(*entry & PAGE_HUGE)) {
+    if (*entry && !(*entry & PAGE_HUGE)) {
       struct page_table * ptbl = (struct page_table *) ROUNDDOWN(*entry, PAGE_SIZE);
       ret = ptbl_walk_range(ptbl, addr, border, walker);
 
@@ -153,7 +153,7 @@ static int pdpt_walk_range(struct page_table *pdpt, uintptr_t base,
       if (ret == -1) return -1;
     }
 
-    if ((*entry & PAGE_PRESENT) && !(*entry & PAGE_HUGE)) {
+    if (*entry && !(*entry & PAGE_HUGE)) {
       struct page_table * pdir = (struct page_table *) ROUNDDOWN(*entry, PAGE_SIZE);
       ret = pdir_walk_range(pdir, addr, border, walker);
 
@@ -199,7 +199,7 @@ static int pml4_walk_range(struct page_table *pml4, uintptr_t base, uintptr_t en
       if (ret == -1) return -1;
     }
 
-    if ((*entry & PAGE_PRESENT)) {
+    if (*entry) {
       struct page_table * pdpt = (struct page_table *) ROUNDDOWN(*entry, PAGE_SIZE);
       ret = pdpt_walk_range(pdpt, addr, border, walker);
 

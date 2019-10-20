@@ -95,18 +95,10 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     }
     #endif
     void * base = !page_aligned((uintptr_t)va) ? ROUNDDOWN(va, PAGE_SIZE) : va;
-
-    struct list * node;
-    struct sector_info * sector_tmp, * sector = NULL;
-    list_foreach(&found->swap_list, node) {
-      sector_tmp = container_of(node, struct sector_info, swap_node);
-      if (sector_tmp->placeholder == (uintptr_t) base) {
-        sector = sector_tmp;
-        break;
-      }
-    }
+    struct sector_info * sector = get_swap_sector(task, base);
 
     if (sector) {
+      cprintf("Swap In\n");
       return swap_in(this_cpu->cpu_task, sector, found);
     }
 
