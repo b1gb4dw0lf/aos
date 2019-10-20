@@ -15,6 +15,8 @@ void remove_vma(struct task *task, struct vma *vma)
 	rb_node_init(&vma->vm_rb);
 	list_remove(&vma->vm_mmap);
 	list_remove(&vma->page_node);
+
+	kfree(vma);
 }
 
 /* Frees all the VMAs for the given task. */

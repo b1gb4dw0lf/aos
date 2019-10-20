@@ -12,6 +12,10 @@ extern struct list runq;
 extern struct task *task_alloc(pid_t ppid);
 #define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 
+struct fork_info {
+  struct vma * vma;
+
+};
 
 static int get_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker *walker) {
   if ((*entry & PAGE_PRESENT)) {
@@ -148,6 +152,11 @@ struct task *task_clone(struct task *task)
 	    // Set the vmas to shared
       vma->is_shared = 1;
       exe_vma->is_shared = 1;
+
+      struct vma * anon_vma = add_executable_vma(NULL, "shared anon", NULL, 0, 0, 0, 0);
+
+      list_insert_after(&anon_vma->vma_list, &vma->vma_node);
+      list_insert_after(&anon_vma->vma_list, &exe_vma->vma_node);
 
       if (vma->page_addr) {
         // Increase refs if mapped

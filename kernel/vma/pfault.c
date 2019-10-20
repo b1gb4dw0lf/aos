@@ -52,8 +52,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
         // 3 - Change the corresponding entry
         page_insert(task->task_pml4, new_page, found->vm_base, page_flags);
 
-        list_remove(&found->page_node);
-        list_insert_after(&new_page->vma_list, &found->page_node);
+        new_page->vma = found;
 
         add_fifo(&page->lru_node);
         list_push(&found->allocated_pages, &page->pp_node);
@@ -68,8 +67,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
           // 3 - Change the corresponding entry
           page_insert(task->task_pml4, new_page, found->vm_base + (i * PAGE_SIZE), page_flags);
 
-          list_remove(&found->page_node);
-          list_insert_after(&new_page->vma_list, &found->page_node);
+          new_page->vma = found;
 
           add_fifo(&page->lru_node);
           list_push(&found->allocated_pages, &page->pp_node);
@@ -80,6 +78,8 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     } else { // Only one ref change perms
       protect_region(task->task_pml4, found->vm_base,
                      found->vm_end - found->vm_base, page_flags);
+      kfree(page->vma);
+      page->vma = found;
     }
 
     return 0;

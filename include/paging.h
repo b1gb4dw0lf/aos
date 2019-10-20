@@ -38,6 +38,8 @@ struct page_info {
 	struct list lru_node;
 
 	struct list vma_list;
+
+	struct vma * vma;
 };
 #endif /* !__ASSEMBLER__ */
 

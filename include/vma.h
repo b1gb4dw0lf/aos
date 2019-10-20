@@ -48,5 +48,9 @@ struct vma {
 	struct list swap_list;
 
 	struct list page_node;
+	struct list vma_list;
+	struct list vma_node;
+
+	pid_t owner;
 };
 

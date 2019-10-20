@@ -60,7 +60,6 @@ void swap_init() {
 
     // Keep the sector id
     sector->sector_id = j * 8;
-    list_init(&sector->swap_node);
 
     // Make free entry lookup cheap
     spin_lock(&free_list_lock);
@@ -86,31 +85,6 @@ static int do_find_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct 
   return 0;
 }
 
-static struct task * find_owner(struct page_info * page, struct vma ** vma_f) {
-  struct task * task;
-  struct list * node, *pagenode;
-  struct vma * vma;
-  struct page_info * pagef;
-
-  for(pid_t pid = 1 ; pid < (1<<16) ; pid++) { /* loop over all pids except pid 0 */
-    task = pid2task(pid, 0); /* acquire task */
-
-    if(!task) continue; /* continue if task doesnt exist */
-
-    list_foreach(&task->task_mmap, node) {
-      vma = container_of(node, struct vma, vm_mmap);
-      list_foreach(&vma->allocated_pages, pagenode) {
-        pagef = container_of(pagenode, struct page_info, pp_node);
-        if(pagef == page) {
-          *vma_f = vma;
-          return task;
-        }
-      }
-    }
-  }
-
-  return NULL;
-}
 
 /* swap a page out by moving its contents to swap and freeing the page */
 int swap_out(struct page_info * page) {
@@ -118,7 +92,14 @@ int swap_out(struct page_info * page) {
   struct task * task = NULL;
   struct vma * vma = NULL;
 
-  task = find_owner(page, &vma);
+
+  if (!page->vma->owner) {
+    // It is shared
+    panic("Shared things not implemented yet");
+  } else {
+    task = pid2task(page->vma->owner, 0);
+    vma = page->vma;
+  }
 
   if (!task || !vma) return -1;
 
@@ -145,7 +126,6 @@ int swap_out(struct page_info * page) {
   }
 
   list_remove(&page->pp_node);
-  list_remove(&vma->page_node);
 
   struct list * free_node = list_pop_left(&sector_free_list);
   struct sector_info * sector = container_of(free_node, struct sector_info, sector_node);
@@ -153,6 +133,7 @@ int swap_out(struct page_info * page) {
 
   /* now we write the data to disk */
   sector->placeholder = (uintptr_t) info.va; /* preferably write vma address here or something */
+  sector->vma = vma;
   disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
@@ -167,8 +148,6 @@ int swap_out(struct page_info * page) {
   unmap_page_range(task->task_pml4, (void *) info.va, PAGE_SIZE);
   update_table_entries(task, info.va, info.va + PAGE_SIZE, sector->sector_id,
       page->pp_order == BUDDY_2M_PAGE);
-
-  list_insert_after(&vma->swap_list, &sector->swap_node);
 
   tlb_invalidate(task->task_pml4, (void *) info.va);
 
@@ -193,7 +172,6 @@ int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
   struct page_info * page;
 
   list_remove(&sector->sector_node);
-  list_remove(&sector->swap_node);
 
   /* read page from disk */
   page = page_alloc(ALLOC_ZERO);
@@ -215,11 +193,17 @@ int swap_in(struct task * task, struct sector_info * sector, struct vma * vma) {
   if(!(vma->vm_flags & VM_EXEC)) flags |= PAGE_NO_EXEC;
   flags |= PAGE_USER;
 
+  // It is shared
+  if (!sector->vma->owner) {
+    panic("Shared ones not implemented yet");
+  } else {
+    page->vma = sector->vma;
+  }
+
   page_insert(task->task_pml4, page, (void *) sector->placeholder, flags);
 
   /* add sector to free list */
   spin_lock(&free_list_lock);
-  list_insert_after(&page->vma_list, &vma->page_node);
   add_fifo(&page->lru_node);
   list_insert_after(&vma->allocated_pages, &page->pp_node);
   list_insert_after(&sector_free_list, &sector->sector_node);
