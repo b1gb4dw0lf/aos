@@ -107,10 +107,12 @@ struct task *task_clone(struct task *task)
 	struct vma * vma;
 	/* first allocate a task struct for the child process */
 	clone = task_alloc(task->task_pid);
+
 	rb_init(&clone->task_rb);
   list_init(&clone->task_mmap);
   list_init(&clone->task_children);
   list_init(&clone->task_zombies);
+  list_init(&clone->task_child);
 
 #ifndef USE_BIG_KERNEL_LOCK
   spin_lock(&task->task_lock);
@@ -172,7 +174,7 @@ struct task *task_clone(struct task *task)
     }
 	}
 
-	/* add process to runqueue */
+  /* add process to runqueue */
 
 #ifndef USE_BIG_KERNEL_LOCK
   spin_lock(&runq_lock);

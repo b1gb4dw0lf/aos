@@ -63,10 +63,10 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 {
 	/* LAB 4: your code here. */
 
-	// Allocate VMA
+  // Allocate VMA
 	struct vma *new_vma = kmalloc(sizeof(struct vma));
 
-	// Copy given info
+  // Copy given info
 	new_vma->vm_flags = flags;
 	new_vma->vm_src = src;
 	new_vma->vm_len = len;
@@ -80,17 +80,22 @@ struct vma *add_executable_vma(struct task *task, char *name, void *addr,
 
 	new_vma->owner = task ? task->task_pid : 0;
 
-	list_init(&new_vma->allocated_pages);
+  list_init(&new_vma->allocated_pages);
 	list_init(&new_vma->swap_list);
 	list_init(&new_vma->page_node);
+	list_init(&new_vma->vma_list);
+
   rb_node_init(&new_vma->vm_rb);
 
 	// Insert into task rb and task list
-	if (insert_vma(task, new_vma) < 0) {
+	if (task && insert_vma(task, new_vma) < 0) {
     return NULL;
 	}
 
-	merge_vmas(task, new_vma);
+	if (task) {
+    merge_vmas(task, new_vma);
+	}
+
 	return new_vma;
 }
 

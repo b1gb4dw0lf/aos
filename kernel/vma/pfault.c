@@ -78,7 +78,10 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     } else { // Only one ref change perms
       protect_region(task->task_pml4, found->vm_base,
                      found->vm_end - found->vm_base, page_flags);
-      kfree(page->vma);
+      if (!page->vma->owner) {
+        kfree(page->vma);
+      }
+
       page->vma = found;
     }
 

@@ -419,7 +419,6 @@ void task_free(struct task *task)
 
 	// Get Parent
 	// Get Task
-
 	if (task->task_ppid > 0) {
     waiting = pid2task(task->task_ppid, 0);
     if (!holding(&waiting->task_lock)) {
@@ -503,7 +502,6 @@ void task_free(struct task *task)
   if (!holding(&dead_tasks_lock)) {
     spin_lock(&dead_tasks_lock);
   }
-
 
   if (!list_is_empty(&task->task_children)) {
     list_insert_after(&dead_tasks, &task->task_node);
