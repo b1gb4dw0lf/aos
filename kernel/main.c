@@ -25,11 +25,6 @@ extern struct spinlock kernel_lock;
 extern struct spinlock runq_lock;
 #endif
 
-void hello_world(char * str) {
-  cprintf(str);
-  syscall(SYS_kill, 0, 0, 0, 0, 0, 0);
-}
-
 extern struct list runq;
 
 void kmain(struct boot_info *boot_info)
@@ -85,9 +80,6 @@ void kmain(struct boot_info *boot_info)
 #ifndef USE_BIG_KERNEL_LOCK
   spin_unlock(&runq_lock);
 #endif
-
-  struct task * kthread = task_create_kernel((int(*)(void *)) &hello_world, "Hello World!\n", 0);
-  list_insert_after(&runq, &kthread->task_node);
 
 #if defined(TEST)
 	TASK_CREATE(TEST, TASK_TYPE_USER);

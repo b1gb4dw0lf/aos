@@ -5,7 +5,6 @@ extern struct sector_info * sectors;
 struct sector_find {
   uint64_t va;
   uint64_t sector;
-  uint8_t isHuge;
 };
 
 static int update_sector_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker * walker) {
@@ -21,11 +20,7 @@ static int update_sector_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, s
 static int update_sector_pde(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker * walker) {
   struct sector_find * info = walker->udata;
 
-  // If it is not a huge table and no table then allocate one
-  if (!*entry && !info->isHuge) {
-    ptbl_alloc(entry, base, end, walker);
-  } else if (!*entry && base == info->va) {
-    // If no entry and its huge then update this
+  if ((*entry & PAGE_HUGE) && base == info->va) {
     *entry = info->sector << 9;
   }
 
@@ -33,11 +28,10 @@ static int update_sector_pde(physaddr_t *entry, uintptr_t base, uintptr_t end, s
 }
 
 
-int update_table_entries(struct task * taks, uint64_t base, uint64_t end, uint64_t sector, uint8_t isHuge) {
+int update_table_entries(struct task * taks, uint64_t base, uint64_t end, uint64_t sector) {
   struct sector_find info;
   info.sector = sector;
   info.va = base;
-  info.isHuge = isHuge;
 
   struct page_walker walker = {
       .get_pte = update_sector_pte,

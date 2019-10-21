@@ -105,9 +105,9 @@ static int post_swap_ops(struct task * task, struct vma * vma, struct page_info 
 
   if (info.va == 0) return -1;
 
-  unmap_page_range(task->task_pml4, (void *) info.va, PAGE_SIZE);
-  update_table_entries(task, info.va, info.va + PAGE_SIZE, sector,
-                       page->pp_order == BUDDY_2M_PAGE);
+  page->pp_ref = 0;
+  page_free(page);
+  update_table_entries(task, info.va, info.va + PAGE_SIZE, sector);
 
   tlb_invalidate(task->task_pml4, (void *) info.va);
 
