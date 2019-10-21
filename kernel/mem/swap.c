@@ -210,6 +210,7 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
   /* read page from disk */
   if(sector->pa == 0) { 
     page = page_alloc(ALLOC_ZERO);
+    page->pp_ref = sector->ref_count + 1; /* + 1 since we decrement the ref count above */
     sector->pa = page2pa(page);
 
     disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
@@ -228,7 +229,9 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
 
   uint64_t flags = 0;
   if(vma->vm_flags & VM_READ) flags |= PAGE_PRESENT;
-  if(vma->vm_flags & VM_WRITE) flags |= PAGE_WRITE;
+  if(vma->owner != 0) {
+    if(vma->vm_flags & VM_WRITE )  flags |= PAGE_WRITE; /* COW shouldnt have write */
+  }
   if(!(vma->vm_flags & VM_EXEC)) flags |= PAGE_NO_EXEC;
   flags |= PAGE_USER;
 
@@ -249,16 +252,18 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
   }
 
   page_insert(task->task_pml4, page, addr, flags);
-  add_fifo(&page->lru_node);
+  page->pp_ref--; /* insert increases pp_ref by 1, we  undo this since we try to keep original pp_ref */
   list_insert_after(&vma->allocated_pages, &page->pp_node);
 
-  if(sector->ref_count > 0) return 0; /* dont remove from taken list if sector still needs to be used */
   /* we could re-use the disk space though but then we would need to give  it a new sector_info struct */
 
   /* add sector to free list */
-  spin_lock(&free_list_lock);
-  list_insert_after(&sector_free_list, &sector->sector_node);
-  spin_unlock(&free_list_lock);
+  if(sector->ref_count == 0) {
+    add_fifo(&page->lru_node);
+    spin_lock(&free_list_lock);
+    list_insert_after(&sector_free_list, &sector->sector_node);
+    spin_unlock(&free_list_lock);
+  }
 
   return 0;
 }
