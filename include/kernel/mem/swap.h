@@ -25,6 +25,9 @@ struct sector_info {
 
 	// For maintaining a free sector list
 	struct list sector_node;
+
+	// For shared mappings
+	physaddr_t pa;
 };
 
 void swap_init(void);

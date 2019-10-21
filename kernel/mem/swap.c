@@ -60,6 +60,8 @@ void swap_init() {
 
     // Keep the sector id
     sector->sector_id = j * 8;
+    //set sector va to 0
+    sector->pa = 0;
 
     // Make free entry lookup cheap
     spin_lock(&free_list_lock);
@@ -206,19 +208,23 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
   }
 
   /* read page from disk */
-  page = page_alloc(ALLOC_ZERO);
+  if(sector->pa == 0) { 
+    page = page_alloc(ALLOC_ZERO);
+    sector->pa = page2pa(page);
 
-  disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
-      PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+    disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
+        PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
-  int poll_res = 0;
-  do {
-    poll_res = disk_poll(disks[SWAP_DISK_NUM]);
-  } while (!poll_res);
+    int poll_res = 0;
+    do {
+      poll_res = disk_poll(disks[SWAP_DISK_NUM]);
+    } while (!poll_res);
 
-  int written = disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
-            PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
-
+    int written = disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
+              PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+  } else {
+    page = pa2page(sector->pa);
+  }
 
   uint64_t flags = 0;
   if(vma->vm_flags & VM_READ) flags |= PAGE_PRESENT;
@@ -243,11 +249,14 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
   }
 
   page_insert(task->task_pml4, page, addr, flags);
+  add_fifo(&page->lru_node);
+  list_insert_after(&vma->allocated_pages, &page->pp_node);
+
+  if(sector->ref_count > 0) return 0; /* dont remove from taken list if sector still needs to be used */
+  /* we could re-use the disk space though but then we would need to give  it a new sector_info struct */
 
   /* add sector to free list */
   spin_lock(&free_list_lock);
-  add_fifo(&page->lru_node);
-  list_insert_after(&vma->allocated_pages, &page->pp_node);
   list_insert_after(&sector_free_list, &sector->sector_node);
   spin_unlock(&free_list_lock);
 
