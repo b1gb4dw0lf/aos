@@ -14,31 +14,38 @@ extern struct task *task_alloc(pid_t ppid);
 
 struct fork_info {
   struct vma * vma;
-
 };
 
 static int get_pte(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker *walker) {
+  struct fork_info * info = walker->udata;
+
   if ((*entry & PAGE_PRESENT)) {
     struct page_info * page = pa2page(STRIP_ENTRY(*entry));
     page->pp_ref += 1;
+    page->vma = info->vma;
   }
   return 0;
 }
 
 static int get_pde(physaddr_t *entry, uintptr_t base, uintptr_t end, struct page_walker *walker) {
+  struct fork_info * info = walker->udata;
+
   if ((*entry & PAGE_HUGE) && (*entry & PAGE_PRESENT)) {
     struct page_info * page = pa2page(STRIP_ENTRY(*entry));
     page->pp_ref += 1;
+    page->vma = info->vma;
   }
   return 0;
 }
 
-void increase_page_refs(struct page_table *pml4, void *va, size_t size,
-                        uint64_t flags)
-{
+static void increase_page_refs(struct page_table *pml4, void *va, size_t size, struct vma * vma) {
+  struct fork_info info;
+  info.vma = vma;
+
   struct page_walker walker = {
       .get_pte = get_pte,
       .get_pde = get_pde,
+      .udata = &info
   };
 
   walk_page_range(pml4, va, (void *)((uintptr_t)va + size), &walker);
@@ -147,6 +154,8 @@ struct task *task_clone(struct task *task)
 	    struct page_info * new_stack = page_lookup(clone->task_pml4,
 	        (void *)USTACK_TOP - PAGE_SIZE, NULL);
 
+	    new_stack->vma = exe_vma;
+
 	    // Copy to clone's stack vaddr from parent task's stack
 	    memcpy(page2kva(new_stack), (void *)USTACK_TOP - PAGE_SIZE, PAGE_SIZE);
 
@@ -163,7 +172,7 @@ struct task *task_clone(struct task *task)
       if (vma->page_addr) {
         // Increase refs if mapped
         increase_page_refs(clone->task_pml4, exe_vma->vm_base,
-                           exe_vma->vm_end - exe_vma->vm_base, 0);
+                           exe_vma->vm_end - exe_vma->vm_base, anon_vma);
 
         // Change shared pages' protection to read only
         protect_region(task->task_pml4, vma->vm_base,
