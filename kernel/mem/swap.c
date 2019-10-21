@@ -119,6 +119,7 @@ static int swap_disk_write(struct page_info * page, struct sector_info * sector)
 
   sector->vma = page->vma;
   sector->ref_count = page->pp_ref;
+  sector->pa = 0;
   disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
@@ -197,7 +198,6 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
    * 4 - write new page location to all relevant PTE's (restore flags?)
    * 5 - move the swap_sector from sector_taken_list to the sector_free_list
    */
-  struct list * node;
   struct page_info * page;
 
   if (sector->ref_count == 1) {
