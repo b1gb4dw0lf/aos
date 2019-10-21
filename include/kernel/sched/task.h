@@ -13,6 +13,7 @@ void task_destroy(struct task *task);
 void task_pop_frame(struct int_frame *frame);
 void task_run(struct task *task);
 void task_load_elf(struct task *task, uint8_t *binary);
+struct task * task_create_kernel(int (*fn)(void*), void *arg, uint64_t flags);
 
 /* Without this extra macro, we couldn't pass macros like TEST to TASK_CREATE()
  * because of the C preprocessor's argument prescan rule.

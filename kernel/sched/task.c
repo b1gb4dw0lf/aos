@@ -3,6 +3,7 @@
 #include <paging.h>
 #include <task.h>
 #include <cpu.h>
+#include <lib.h>
 
 #include <kernel/acpi.h>
 #include <kernel/monitor.h>
@@ -213,7 +214,7 @@ struct task *task_alloc(pid_t ppid)
  * @param ppid parent pid
  * @return struct task *
  */
-struct task * task_alloc_kernel(pid_t ppid) {
+static struct task * task_alloc_kernel(pid_t ppid) {
   // Should kernel threads need a deep copy?
   // Otherwise we still need a stack?
   // Maybe we can change it to copy of pml4 and other tables shared?
@@ -223,14 +224,12 @@ struct task * task_alloc_kernel(pid_t ppid) {
   // Set the task type
   task->task_type = TASK_TYPE_KERNEL;
   // Set the ring level to 0 in regs
-  task->task_frame.ds = GDT_UDATA | 0;
-  task->task_frame.ss = GDT_UDATA | 0;
-  task->task_frame.cs = GDT_UCODE | 0;
-
-  // Since this is a kernel thread?
-  task->task_frame.rsp = KSTACK_TOP;
+  task->task_frame.ds = GDT_KDATA;
+  task->task_frame.ss = GDT_KDATA;
+  task->task_frame.cs = GDT_KCODE;
 
   // Prevent interrupt by not enabling IF flags
+  task->task_frame.rflags &= !FLAGS_IF;
 
   cprintf("[PID %5u] New kernel task with PID %u\n",
           this_cpu->cpu_task ? this_cpu->cpu_task->task_pid : 0, task->task_pid);
@@ -238,26 +237,36 @@ struct task * task_alloc_kernel(pid_t ppid) {
   return task;
 }
 
-void task_create_kernel(int (*fn)(void*), void *arg, uint64_t flags) {
+struct task * task_create_kernel(int (*fn)(void*), void *arg, uint64_t flags) {
   struct task * kernel_task = task_alloc_kernel(0);
 
   rb_init(&kernel_task->task_rb); // Do we need this?
   list_init(&kernel_task->task_mmap);
-  list_init(&kernel_task->task_children);
   list_init(&kernel_task->task_zombies);
+  list_init(&kernel_task->task_children);
+  list_init(&kernel_task->task_child);
+  list_init(&kernel_task->task_node);
 
   // Since all binaries are mapped in kernel image we are safe to call
   // Also, the kernel does not use vmas, therefore we are also safe to make syscall
   kernel_task->task_frame.rip = (uintptr_t) fn;
+  kernel_task->task_frame.rdi = (uintptr_t) arg;
 
   // TODO: Think about this
   // We don't want stack to be shared when the user
   // traps into the kernel, or should we just use that core's stack?
   struct page_info * kernel_stack = page_alloc(ALLOC_ZERO);
-  page_insert(kernel_task->task_pml4, kernel_stack, (void *) KSTACK_TOP - PAGE_SIZE,
-      PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC);
+  uintptr_t stack_top = (uint64_t) page2kva(kernel_stack) + PAGE_SIZE - 8;
 
-  list_insert_after(&runq, &kernel_task->task_node); //add process to run queue
+  uint64_t stack_flags = PAGE_PRESENT | PAGE_WRITE | PAGE_NO_EXEC;
+
+  add_executable_vma(kernel_task, "stack", page2kva(kernel_stack), PAGE_SIZE, stack_flags, 0, 0);
+  page_insert(kernel_task->task_pml4, kernel_stack, (void *)page2kva(kernel_stack), stack_flags);
+
+  // Set rsp to stack top
+  kernel_task->task_frame.rsp = stack_top;
+
+  return kernel_task;
 }
 
 /* Sets up the initial program binary, stack and processor flags for a user
@@ -476,7 +485,7 @@ void task_free(struct task *task)
 	/* Unmap the user pages. */
 	unmap_user_pages(task->task_pml4);
 
-	// Remove vmas
+  // Remove vmas
 	free_vmas(task);
 
   nuser_tasks--;
@@ -495,6 +504,7 @@ void task_free(struct task *task)
     spin_lock(&dead_tasks_lock);
   }
 
+
   if (!list_is_empty(&task->task_children)) {
     list_insert_after(&dead_tasks, &task->task_node);
     task->task_status = TASK_DYING;
@@ -502,6 +512,7 @@ void task_free(struct task *task)
     spin_unlock(&task->task_lock);
     sched_yield();
   }
+
 
   spin_unlock(&dead_tasks_lock);
   spin_unlock(&task->task_lock);
