@@ -83,7 +83,7 @@ struct sector_info * get_swap_sector(struct task * task, void * addr) {
 
   if (info.sector == 0) return NULL;
 
-  cprintf("Sector is: %d\n", info.sector >> 9);
+  //cprintf("Sector is: %d\n", info.sector >> 9);
 
   size_t index = (info.sector >> 9) / 8;
   return &sectors[index];

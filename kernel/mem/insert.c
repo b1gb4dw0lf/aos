@@ -38,7 +38,8 @@ static int insert_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
   // Set the flags?
   physaddr_t newAddr = page2pa(info->page) | info->flags | PAGE_PRESENT;
 
-  // Set the entry to new page
+  // Set the entry to new page	
+	info->page->va = base; /* track mapped page */
   *entry = newAddr;
 
   return 0;

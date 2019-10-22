@@ -99,7 +99,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     struct sector_info * sector = get_swap_sector(task, base);
 
     if (sector) {
-      cprintf("Swap In\n");
+//      cprintf("Swap In\n");
       return swap_in(this_cpu->cpu_task, base, sector, found);
     }
 

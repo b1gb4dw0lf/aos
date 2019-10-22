@@ -16,6 +16,7 @@ static int populate_pte(physaddr_t *entry, uintptr_t base, uintptr_t end,
 
 	page->pp_ref += 1;//FIXME needed?
 	physaddr_t newAddr = page2pa(page) | info->flags | PAGE_PRESENT;
+	page->va = base; /* track mapped pages */
 	*entry = newAddr;
 
 	/* LAB 3: your code here. */

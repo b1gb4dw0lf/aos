@@ -13,7 +13,6 @@ size_t nsector;
 #define DISK_SIZE 134217728
 #define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
 
-
 /* we might have to lock the taken and free list for multiprocessing */
 struct spinlock free_list_lock;
 struct spinlock taken_list_lock;
@@ -101,7 +100,13 @@ static int post_swap_ops(struct task * task, struct vma * vma, struct page_info 
       .udata = &info,
   };
 
-  walk_page_range(task->task_pml4, vma->vm_base, vma->vm_end, &walker);
+  uint64_t x,y;
+  if(page->va) {
+    info.va = page->va;
+  } else {
+
+    walk_page_range(task->task_pml4, vma->vm_base, vma->vm_end, &walker);
+  }
 
   if (info.va == 0) return -1;
 

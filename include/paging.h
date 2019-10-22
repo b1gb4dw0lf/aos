@@ -40,6 +40,8 @@ struct page_info {
 	struct list vma_list;
 
 	struct vma * vma;
+
+	uint64_t va;
 };
 #endif /* !__ASSEMBLER__ */
 
