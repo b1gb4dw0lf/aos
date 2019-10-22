@@ -91,7 +91,7 @@ def test_evilchild():
     r.user_test('evilchild')
     r.match('.PID     .. New task with PID 2',
             '.PID     .. I am the child!',
-            '.PID     .. Reaping task with PID 1',
+            '.PID     .. Reaping task with PID 2',
             '.PID     .. Freed task with PID 1',
             '.PID     .. I am the parent!',
             '.PID     .. Exiting gracefully',
