@@ -258,7 +258,6 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
 
   page_insert(task->task_pml4, page, addr, flags);
   page->pp_ref--; /* insert increases pp_ref by 1, we  undo this since we try to keep original pp_ref */
-  list_insert_after(&vma->allocated_pages, &page->pp_node);
 
   /* we could re-use the disk space though but then we would need to give  it a new sector_info struct */
 

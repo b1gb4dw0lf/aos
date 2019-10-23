@@ -39,14 +39,14 @@ size_t get_free_page_count() {
  */
 size_t count_free_pages(size_t order)
 {
-	struct list *node;
+	struct list *node, *next;
 	size_t nfree_pages = 0;
 
 	if (order >= BUDDY_MAX_ORDER) {
 		return 0;
 	}
 
-	list_foreach(page_free_list + order, node) {
+	list_foreach_safe(page_free_list + order, node, next) {
 		++nfree_pages;
 	}
 
@@ -212,12 +212,12 @@ struct page_info *buddy_merge(struct page_info *page)
  */
 struct page_info *buddy_find(size_t req_order)
 {
-  struct list *node;
+  struct list *node, *next;
   struct page_info *res;
   struct page_info *page;
 
   for(size_t order = req_order; order < BUDDY_MAX_ORDER; order++) {
-    list_foreach(page_free_list + order, node) {
+    list_foreach_safe(page_free_list + order, node, next) {
       page = container_of(node, struct page_info, pp_node);
 
       if(page->pp_free && order == req_order) {
