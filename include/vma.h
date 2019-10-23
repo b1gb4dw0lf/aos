@@ -42,9 +42,6 @@ struct vma {
 
 	void * page_addr;
 
-	/* save mapped pages */
-	struct list allocated_pages;
-
 	struct list swap_list;
 
 	struct list page_node;
