@@ -263,6 +263,7 @@ void int_handler(struct int_frame *frame)
 	task_run(this_cpu->cpu_task);
 }
 
+int is_swap_active = 0;
 void page_fault_handler(struct int_frame *frame)
 {
 	void *fault_va;
@@ -271,30 +272,21 @@ void page_fault_handler(struct int_frame *frame)
 	/* Read the CR2 register to find the faulting address. */
 	fault_va = (void *)read_cr2();
 
-	if (get_free_page_count() < 512) {
+	if (!is_swap_active && get_free_page_count() < 6000 && this_cpu->cpu_id == 0) {
 	  //cprintf("House Keeping\n");
-	  struct page_info * page;
-	  struct list * page_node;
+	  is_swap_active = 1;
+    struct task * ktask = task_create_kernel((int (*)(void *)) kthread_swap, NULL, 0);
+    list_insert_after(&this_cpu->runq, &ktask->task_node);
+	}
 
-	  // Continue to swap until we have 4MB of free pages
-    while (get_free_page_count() < 1024) {
-	    // Well no pages in fifo somehow, nothing to do
-	    // Get the unlucky page from fifo
-      spin_lock(&working_set_lock);
-      if (list_is_empty(&working_set)) {
-        spin_unlock(&working_set_lock);
-        break;
-      }
-      page_node = list_pop_left(&working_set);
-      spin_unlock(&working_set_lock);
-
-      page = container_of(page_node, struct page_info, lru_node);
-	    swap_out(page);
-	  }
+	// If we don't have enough free pages
+	// Wait until swap kicks in
+	if (get_free_page_count() < 128) {
+	  sched_yield();
 	}
 
   // If free pages are still below 512, activate oom killing
-  if (get_free_page_count() < 256) {
+  if ((list_is_empty(&working_set) || !is_swap_active) && get_free_page_count() < 128) {
     cprintf("CPU %d - OOM Killing in process\n", this_cpu->cpu_id);
     struct task * unlucky_task = get_task_to_kill();
     if (this_cpu->cpu_task == unlucky_task) {

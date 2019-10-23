@@ -192,6 +192,7 @@ int check_running() {
   return 0;
 }
 
+extern int should_exit;
 /* For now jump into the kernel monitor. */
 void sched_halt()
 {

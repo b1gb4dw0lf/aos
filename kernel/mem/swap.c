@@ -6,6 +6,8 @@
 #include <kernel/dev/disk.h>
 #include <kernel/sched/task.h>
 #include <ata.h>
+#include <syscall.h>
+#include <kernel/sched.h>
 
 /* sector counter */
 size_t nsector;
@@ -271,4 +273,27 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
   }
 
   return 0;
+}
+
+int should_exit = 0;
+void kthread_swap() {
+  struct list * node;
+  struct page_info * page;
+
+  // Run until there is no swappable memory
+  while (!list_is_empty(&working_set)) {
+    if (get_free_page_count() < 5000 && !list_is_empty(&working_set)) {
+      for (int i = 0; i < 512; ++i) {
+        node = pop_fifo();
+
+        if (!node) break;
+
+        page = container_of(node, struct page_info, lru_node);
+        swap_out(page);
+      }
+    }
+    sched_yield();
+  }
+
+  syscall(SYS_kill, 0, 0, 0, 0, 0, 0);
 }
