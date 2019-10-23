@@ -554,6 +554,22 @@ void task_pop_frame(struct int_frame *frame)
 	panic("We should have gone back to userspace!");
 }
 
+void task_pop_kernel_frame(struct int_frame *frame)
+{
+  cprintf("INT %p\n", frame->int_no);
+  switch (frame->int_no) {
+    case 0x80:
+      cprintf("sysret64\n");
+      sysret64(frame);
+      break;
+    default:
+      cprintf("iret64\n");
+      iret64(frame); break;
+  }
+
+  panic("We should have gone back to userspace!");
+}
+
 extern struct spinlock runq_lock;
 
 /* Context switch from the current task to the provided task.
@@ -613,9 +629,16 @@ void task_run(struct task *task)
 #endif
 
   spin_unlock(&task->task_lock);
+
+  if (task->task_type == TASK_TYPE_KERNEL) {
+    task_pop_kernel_frame(&task->task_frame);
+  }
+
   task_pop_frame(&task->task_frame);
 
 	/* LAB 3: Your code here. */
 	panic("task should be running!");
 }
+
+
 

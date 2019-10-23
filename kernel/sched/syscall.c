@@ -153,12 +153,17 @@ void syscall_handler(uint64_t syscallno, uint64_t a1, uint64_t a2, uint64_t a3,
 	/* Avoid using the frame on the stack. */
 	frame = &this_cpu->cpu_task->task_frame;
 
+	cprintf("Syscall NO: %d\n", syscallno);
+
 	/* Issue the syscall. */
 // 	write_msr(MSR_KERNEL_GS_BASE, (uintptr_t) this_cpu);//should maybe be this_cpu->cpu_tss->rsp[0] ?
 	frame->rax = syscall(syscallno, a1, a2, a3, a4, a5, a6);
 
+	cprintf("Return to task\n");
+
 	/* Return to the current task, which should be running. */
 	#ifdef LAB3_SYSCALL
+	  cprintf("SYSRET64");
 	  sysret64(frame);
 	#else
 		task_run(this_cpu->cpu_task);

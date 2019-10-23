@@ -6,6 +6,16 @@
 #include <kernel/dev/disk.h>
 #include <kernel/sched/task.h>
 #include <ata.h>
+#include <syscall.h>
+#include <kernel/sched.h>
+
+
+#include <x86-64/gdt.h>
+#include <x86-64/idt.h>
+#include <x86-64/memory.h>
+
+#include <cpu.h>
+
 
 /* sector counter */
 size_t nsector;
@@ -271,4 +281,23 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
   }
 
   return 0;
+}
+
+void kthread_swap() {
+  if (0 && !list_is_empty(&working_set)) {
+    struct page_info * page;
+    struct list * node;
+    for (int i = 0; i < 512; ++i) {
+      node = pop_fifo();
+      if (!node) break;
+
+      page = container_of(node, struct page_info, lru_node);
+      swap_out(page);
+    }
+  }
+
+  cprintf("KTHREAD - Hello World\n");
+  ksched_yield();
+  cprintf("KTHREAD - Hello Again World\n");
+  kkill(0);
 }

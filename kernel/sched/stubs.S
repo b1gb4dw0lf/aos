@@ -73,7 +73,6 @@ isr_common_stub:
 	/* iret should have the  required data on the stack */
 	iretq
 
-
 .global syscall64
 syscall64:
 	/* syscall args : rdi rsi, rdx, r10, r8, r9, rbp */
@@ -83,7 +82,7 @@ syscall64:
   swapgs
 	movq %rsp, %gs:CPU_TSS_RSP3
 	/* Load the kernel stack pointer from the per-cpu struct. */
-  movq %gs:CPU_TSS_RSP0, %rsp
+    movq %gs:CPU_TSS_RSP0, %rsp
 	/* load int frame location */
 	pushq %r15 /* store r15 temporarily */
 	addq $16, %rsp 
@@ -202,3 +201,13 @@ ISR_ERRCODE 21
 ISR_ERRCODE 30
 ISR_NOERRCODE 32
 ISR_NOERRCODE 128
+
+// Kernel Thread SYSCALL
+.global do_ksyscall
+do_ksyscall:
+	pushq %rbp
+	movq 0x10(%rsp), %rbp
+    movq %rcx, %r10
+    syscall
+	popq %rbp
+	retq

@@ -161,7 +161,8 @@ KERNEL_SRCFILES += \
 	kernel/dev/pci.c \
 	kernel/mem/lru.c \
 	kernel/mem/swap.c \
-	kernel/mem/swap_walkers.c
+	kernel/mem/swap_walkers.c \
+	kernel/sched/kthread_syscall.c
 
 # LAB 7 binaries
 KERNEL_BINFILES += \

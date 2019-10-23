@@ -34,3 +34,4 @@ void swap_init(void);
 int swap_out(struct page_info * page);
 int swap_in(struct task * task, void * addr, struct sector_info * sector, struct vma * vma);
 int swap_free_sectors(void);
+void kthread_swap();

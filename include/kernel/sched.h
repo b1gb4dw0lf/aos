@@ -8,5 +8,6 @@
 #include <kernel/sched/task.h>
 #include <kernel/sched/wait.h>
 #include <kernel/sched/oom.h>
+#include <kernel/sched/kthread_syscall.h>
 
 
