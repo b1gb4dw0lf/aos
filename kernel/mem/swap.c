@@ -132,10 +132,11 @@ static int swap_disk_write(struct page_info * page, struct sector_info * sector)
   disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
-  int poll_res = 0;
-  do {
-    poll_res = disk_poll(disks[SWAP_DISK_NUM]);
-  } while (!poll_res);
+  while (!disk_poll(disks[SWAP_DISK_NUM])) {
+    cprintf("Yielding\n");
+    kswitch(&cur_task->task_frame);
+    cprintf("Continuing\n");
+  }
 
   int res = disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
@@ -181,13 +182,10 @@ int swap_out(struct page_info * page) {
   } else {
     task = pid2task(page->vma->owner, 0);
     vma = page->vma;
-    spin_lock(&task->task_lock);
     if (swap_disk_write(page, sector) < 0) {
-      spin_unlock(&task->task_lock);
       panic("Disk Write Problems!");
     }
     post_swap_ops(task, vma, page, sector->sector_id);
-    spin_unlock(&task->task_lock);
   }
 
   return 0;
@@ -289,11 +287,13 @@ void kthread_swap() {
 
         if (!node) break;
 
+
         page = container_of(node, struct page_info, lru_node);
         swap_out(page);
       }
+    } else {
+      kswitch(&cur_task->task_frame);
     }
-    kswitch(&cur_task->task_frame);
   }
 
   syscall(SYS_kill, 0, 0, 0, 0, 0, 0);
