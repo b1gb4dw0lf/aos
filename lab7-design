@@ -1,49 +1,61 @@
-Main design for memory swapping 
-Known : 
-o disks 
-  - Disks reside in the disks variable (#include disk.h)
-  - Disks currently consist of the kernel image with boot and such (0) and the swap disk (1)
-  - Disks support three operations, poll, read and write. 
-    - read/write have to be sector aligned (512 bytes) 
-    - They are non blocking, and can be checked through disk_poll
-    o - thus a normal way to use it would be to read/write and act as if it is being queued. 
-    o - check completion through disk_poll
+Design for Kthreads :
+  the only current kthread we use is for swapping (kswap), unlike the way we ran kernel tasks through our scheduler before, 
+  which was through direct calls, this one actually has a proper task frame. With it we implemented a kernel level context switch.
+  We accomplished this by passing the task frame as an argument, storing all registers in the frame, and then loading the 
+  kernel stack location into rsp through the per-cpu tss.
 
-o swapping
-  - Swapping Should happen through kernel threads
-  o - this means a swap happens completely separate from the tasks actually using the relevant pages
+Design for Swapping :
+  We added multiple values all around, page_info structs now save their owning-vma, this is done through the populate and insert
+  function calls specific to vma's, thus page->vma will describe whatever vma maps the page. 
 
-  - The conditions for swapping are as follows
-  1 - A page is last in the CLOCK(algorithm) and is thus 'least' used, and can be swapped out 
-  2 - The page is still mapped by some tasks (! design for this later)
-  3 - The page is not used by kernel tasks. (! is this really a requirement?, is just hypothetical)
+  We do have a mechanism for shared pages which replaces the owning vma of a page with a 'non owned' vma, which isn't 
+  linked to any specific task, we save all vma's that map the page there. 
 
-  - The algorithm for swapping out would be as follows
-  1 - kswap kernel thread triggers a swap on a page that adheres to the conditions above
-  2 - [swalloc!] our linear mapping to the swap disk gives us a free space to swap to
-  3 - we write the page contens to sectors on disk
-    o The write would be 4096/512 = 8 exactly sectors  and needs to be 512 bytes aligned.
-    o The write would be non-blocking and should thus happen in the background, this would
-      make it rather unreliable as some applications could claim memory too fast , right ?
-  4 - through disk_poll we can see that the write has actually happened
-    o Can we clear the page before the write finishes? maybe? idunno? 
-  5 - we write the swap_offset | PAGE_SWAP flag to all the PTE's that map the page we just swapped.
-    o - the process is as follows [ proposal ] , this process is very expansive in the slides so this 
-      might not work properly.
-    1 - we run container_of(*page) and set the obtained *entry to swap_offset | PAGE_SWAP 
-    2 - we repeat the above step untill no valid container can be obtained 
-  6 - The page can finally be freed through normal means. 
+  On a swap_out we have two different mechanisms to find the virtual page locations. This page table walk, even though
+  its limited to a single vma, is very expensive (mempress vma is 128MB for example), thus on non shared pages we decided
+  to save the virtual address it is mapped at as well. This made swapping out superfast for non shared memory at the cost
+  of more memory usage for the page_info structs. 
+  If a vma is non owned it will simply use the page walks to find the vma specific virtual addresses.
 
-  - The algorithm for swapping in would be as follows
-  1 - a pagefault occurs on a page
-  2 - our pagefault handler reads the PAGE_SWAP flag
-  3 - our pagefault handler will trigger our swap-in utilities
-    - swap-in would be probably gets its own file with swap-in and swap-out functions. 
-    1 - *entry describes the offset(And maybe the region) at which the page resides
-    2 - we read from disk, and this should maybe be blocking as the caller needs to wait
-    3 - disk_poll indicates the read is done and we can just write the data to page (can be merged with step 2, as long as we wait for polling)
-    4 - the space on swap needs to be freed through swalloc as well.
-    5 - All pages mapping this entry need to know that the entry is swapped back in (!!!) as to not trigger another swapin
-      o We cant use container of as we deleted the mappings... ? maybe for later? this is a rough one. 
-        - Swap utility could keep track of page_info structs to swap mappings. as these shoud be unique. 
-  4 - return to task. 
+  Our swapping system relies on a structure similar to the buddy allocator
+    We keep track of two lists, one free and one taken list.
+    All sectors ( on a 8 sector granularity, so one sector per full page ) have a sector_info structure
+    This structure describes the location on disk together with a lock, 
+    it also saves the physical location of the page_info struct that is mapped through it.
+    Finally it also saves the pages' reference counter.
+
+  Our swapping mechanism, consists of 4 parts
+  1 - Swapping out ( swap pages onto disk and freeing them )
+    Swap out is given a page frame
+    It will acquire a sector from the swap free list, and get a position on disk.
+    It will now attempt to unmap the page from wherever its mapped
+    For the virtual address lookup it will do one of two things
+      - the page is non shared and thus we dont have to do a pagetable walk (FAST)
+      - the page is shared and we will walk all relevant vma's (SLOW)
+
+    We unmap the page from all mapping vmas, and we write the sector_id to the PTE entries, the entries are set 
+    to non present, and thus will pagefault normally, and we can then infer its swapped from its contents and flags.
+
+    After this the page contents get written to disk in a blocking matter, (disk_write, disk_poll).
+    Finally we free the page and save the page refs in the sector_info ref counter.
+    
+  2 - Swapping in ( swap pages from disk )
+    A pagefault is handled in pgfault where we notice the entry is swapped out. We will thus do a swap_in call for the 
+    corresponding sector_id.
+
+    We acquire the sector from the sector_taken list.
+    We page_alloc a new page and write the disks contents into it. 
+    We decrement the sector refs on each swap in, if the sector refs reach 0 we clear the sector and put it back in the
+    free list. 
+    Otherwise we save the mapped page_info struct in the sector struct, and thus on next swap_in, instead of doing a disk read
+    We can directly map the saved page from the sector_info struct. 
+  3 - kswap (periodic reclaiming )
+    Our Kswap runs as a kernel thread and is scheduled through our scheduler, we had to do some funky magic to get it working. 
+    (we wrote a kernel switcher for the kthread to switch context to the main kernel context) 
+
+    kswap runs a loop on the count of pages and will reclaim pages when its 'needed'. We decide on which pages to reclaim
+    through LRU worklists. 
+
+  4 - Direct reclaiming (OOM killing)
+    kswap enforces our 'soft' limit, while OOM killing enforces our hard limit. It simply kills a task when we're running 
+    out of memory, ensuring the kernel will continue running and a user cant hog all memory. 
