@@ -272,7 +272,7 @@ void page_fault_handler(struct int_frame *frame)
 	/* Read the CR2 register to find the faulting address. */
 	fault_va = (void *)read_cr2();
 
-	if (!is_swap_active && get_free_page_count() < 6000 && this_cpu->cpu_id == 0) {
+	if (!is_swap_active && get_free_page_count() < 5000 && this_cpu->cpu_id == 0) {
 	  //cprintf("House Keeping\n");
 	  is_swap_active = 1;
     struct task * ktask = task_create_kernel((int (*)(void *)) kthread_swap, NULL, 0);
@@ -281,7 +281,7 @@ void page_fault_handler(struct int_frame *frame)
 
 	// If we don't have enough free pages
 	// Wait until swap kicks in
-	if (get_free_page_count() < 128) {
+	if (get_free_page_count() < 64) {
 	  sched_yield();
 	}
 
