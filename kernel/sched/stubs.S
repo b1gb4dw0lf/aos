@@ -176,14 +176,14 @@ kswitch:
 	mov %rbx, 0x60(%rdi)
 
 	mov %ss, 0xb0(%rdi)
-	mov %rsp, 0xa8(%rdi)
 	//	mov %flags, 0xa0(%r15)
 	mov %cs, 0x98(%rdi)
 
 	/* TODO : KAAN BE READY FOR SOME MAGIC MY BOI */
 	popq %rax
 	mov %rax, 0x90(%rdi)
-	pushq %rax
+	mov %rsp, 0xa8(%rdi)
+//	pushq %rax
 
 	/* get kernel rsp from kernel tss struct */
 	swapgs
