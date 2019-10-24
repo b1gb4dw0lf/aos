@@ -157,46 +157,35 @@ iret64:
 .global kswitch
 kswitch:
 	/* context switch from kthread to k */
-	/* first arg in %rax */
-	/* first acquire int frame location to save state */
+	/* TODO store all registers */
+	mov %ds, 0x0(%rdi)
+	mov %r15, 0x8(%rdi)
+	mov %r14, 0x10(%rdi)
+	mov %r13, 0x18(%rdi)
+	mov %r12, 0x20(%rdi)
+	mov %r11, 0x28(%rdi)
+	mov %r10, 0x30(%rdi)
+	mov %r9, 0x38(%rdi)
+	mov %r8, 0x40(%rdi)
+	mov %rdi, 0x48(%rdi)
+	mov %rsi, 0x50(%rdi)
+	mov %rbp, 0x58(%rdi)
+	mov %rdx, 0x60(%rdi)
+	mov %rcx, 0x68(%rdi)
+	mov %rax, 0x70(%rdi)
+	mov %rbx, 0x78(%rdi)
+
+	mov %ss, 0xb0(%rdi)
+	mov %rsp, 0xa8(%rdi)
+	//	mov %flags, 0xa0(%r15)
+	mov %cs, 0x98(%rdi)
+	//	mov %rip, 0x90(%r15)
+
+	/* get kernel rsp from kernel tss struct */
 	swapgs
-  movq %rsp, %gs:CPU_TSS_RSP3
   /* Load the kernel stack pointer from the per-cpu struct. */
   movq %gs:CPU_TSS_RSP0, %rsp
 	swapgs
-	/* now acquire stack frame location, hopeing its somewhere in here.. */
-	popq %r15 /* first value is empty? */
-	popq %r15 /* stack frame location */
-	/* TODO store all registers */
-	mov %ds, 0x0(%r15)
-//	mov %r15, 0x8(%r15)
-	mov %r14, 0x10(%r15)
-	mov %r13, 0x18(%r15)
-	mov %r12, 0x20(%r15)
-	mov %r11, 0x28(%r15)
-	mov %r10, 0x30(%r15)
-	mov %r9, 0x38(%r15)
-	mov %r8, 0x40(%r15)
-	mov %rdi, 0x48(%r15)
-	mov %rsi, 0x50(%r15)
-	mov %rbp, 0x58(%r15)
-	mov %rdx, 0x60(%r15)
-	mov %rcx, 0x68(%r15)
-	mov %rax, 0x70(%r15)
-	mov %rbx, 0x78(%r15)
-
-	mov %ss, 0xb0(%r15)
-	mov %rsp, 0xa8(%r15)
-//	mov %flags, 0xa0(%r15)
-	mov %cs, 0x98(%r15)
-//	mov %rip, 0x90(%r15)
-
-	/* set other registers */
-
-	/* now now leave the kernel*/
-	/* restore rsp state  */
-	pushq $0
-	pushq %r15
 	/* jump to sched_yield */
 	jmp sched_yield
 

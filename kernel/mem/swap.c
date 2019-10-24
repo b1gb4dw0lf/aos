@@ -12,7 +12,7 @@
 /* sector counter */
 size_t nsector;
 
-extern void kswitch(void * func);
+extern void kswitch(struct int_frame  *frame);
 
 #define DISK_SIZE 134217728
 #define STRIP_ENTRY(x) ROUNDDOWN(x & ~PAGE_NO_EXEC & ~PAGE_HUGE & ~ PAGE_PRESENT & ~PAGE_WRITE, PAGE_SIZE)
@@ -293,7 +293,7 @@ void kthread_swap() {
         swap_out(page);
       }
     }
-    kswitch(sched_yield);
+    kswitch(&cur_task->task_frame);
   }
 
   syscall(SYS_kill, 0, 0, 0, 0, 0, 0);
