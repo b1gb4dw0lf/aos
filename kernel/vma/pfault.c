@@ -54,7 +54,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
 
         new_page->vma = found;
 
-        add_fifo(&page->lru_node);
+        add_clock(&page->lru_node);
       } else {
         size_t num_of_pages = (found->vm_end - found->vm_base) / PAGE_SIZE;
 
@@ -68,7 +68,7 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
 
           new_page->vma = found;
 
-          add_fifo(&page->lru_node);
+          add_clock(&page->lru_node);
         }
       }
       found->is_shared = 0;

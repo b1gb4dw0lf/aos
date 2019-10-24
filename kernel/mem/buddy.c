@@ -274,6 +274,7 @@ struct page_info *page_alloc(int alloc_flags)
 #endif
 
   page->pp_free = 0;
+  page->R = 1;
 
   list_remove(&page->pp_node);
   if(list_is_empty(page_free_list + page->pp_order)) {
@@ -327,6 +328,7 @@ void page_free(struct page_info *pp)
   }
 
   pp->pp_free=1; //Mark page as free
+  pp->R = 0;
 
   if(pp->pp_order == (BUDDY_MAX_ORDER -1)) {
     list_insert_after(page_free_list + pp->pp_order, &pp->pp_node); //Add node to free list

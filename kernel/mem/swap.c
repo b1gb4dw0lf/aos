@@ -265,7 +265,7 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
 
   /* add sector to free list */
   if(sector->ref_count == 0) {
-    add_fifo(&page->lru_node);
+    add_clock(&page->lru_node);
     spin_lock(&free_list_lock);
     list_insert_after(&sector_free_list, &sector->sector_node);
     spin_unlock(&free_list_lock);
@@ -283,7 +283,7 @@ void kthread_swap() {
   while (!list_is_empty(&working_set)) {
     if (get_free_page_count() < 5000 && !list_is_empty(&working_set)) {
       for (int i = 0; i < 512; ++i) {
-        node = pop_fifo();
+        node = pop_clock();
 
         if (!node) break;
 

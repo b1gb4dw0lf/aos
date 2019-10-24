@@ -43,15 +43,33 @@ void kswap(struct list * active) {
   spin_unlock(&inactive_set_lock);
 }
 
-void add_fifo(struct list * node) {
+void add_clock(struct list * node) {
   spin_lock(&working_set_lock);
   list_insert_after(&working_set, node);
   spin_unlock(&working_set_lock);
 }
 
-struct list * pop_fifo() {
-  struct list * node;
+struct list * pop_clock() {
+  struct list * node, * next;
+  struct page_info * page;
   spin_lock(&working_set_lock);
+
+  // If all are 0 for the first round
+  for (int i = 0; i < 2; ++i) {
+    list_foreach_safe(&working_set, node, next) {
+      page = container_of(node, struct page_info, lru_node);
+      if (page->R == 0) {
+        list_remove(&working_set);
+        list_insert_before(node, &working_set);
+        list_remove(node);
+        spin_unlock(&working_set_lock);
+        return node;
+      } else {
+        page->R = 0;
+      }
+    }
+  }
+
   node = list_pop_left(&working_set);
   spin_unlock(&working_set_lock);
   return node;
