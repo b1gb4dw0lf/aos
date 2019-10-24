@@ -154,6 +154,52 @@ iret64:
 	addq $16, %rsp
 	iretq
 
+.global kswitch
+kswitch:
+	/* context switch from kthread to k */
+	/* first arg in %rax */
+	/* first acquire int frame location to save state */
+	swapgs
+  movq %rsp, %gs:CPU_TSS_RSP3
+  /* Load the kernel stack pointer from the per-cpu struct. */
+  movq %gs:CPU_TSS_RSP0, %rsp
+	swapgs
+	/* now acquire stack frame location, hopeing its somewhere in here.. */
+	popq %r15 /* first value is empty? */
+	popq %r15 /* stack frame location */
+	/* TODO store all registers */
+	mov %ds, 0x0(%r15)
+//	mov %r15, 0x8(%r15)
+	mov %r14, 0x10(%r15)
+	mov %r13, 0x18(%r15)
+	mov %r12, 0x20(%r15)
+	mov %r11, 0x28(%r15)
+	mov %r10, 0x30(%r15)
+	mov %r9, 0x38(%r15)
+	mov %r8, 0x40(%r15)
+	mov %rdi, 0x48(%r15)
+	mov %rsi, 0x50(%r15)
+	mov %rbp, 0x58(%r15)
+	mov %rdx, 0x60(%r15)
+	mov %rcx, 0x68(%r15)
+	mov %rax, 0x70(%r15)
+	mov %rbx, 0x78(%r15)
+
+	mov %ss, 0xb0(%r15)
+	mov %rsp, 0xa8(%r15)
+//	mov %flags, 0xa0(%r15)
+	mov %cs, 0x98(%r15)
+//	mov %rip, 0x90(%r15)
+
+	/* set other registers */
+
+	/* now now leave the kernel*/
+	/* restore rsp state  */
+	pushq $0
+	pushq %r15
+	/* jump to sched_yield */
+	jmp sched_yield
+
 .global sysret64
 sysret64:
 	/* LAB 3: your code here. */
