@@ -123,27 +123,6 @@ static int post_swap_ops(struct task * task, struct vma * vma, struct page_info 
   return 0;
 }
 
-static int swap_disk_write(struct page_info * page, struct sector_info * sector) {
-  /* now we write the data to disk */
-
-  sector->vma = page->vma;
-  sector->ref_count = page->pp_ref;
-  sector->pa = 0;
-  disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
-      PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
-
-  while (!disk_poll(disks[SWAP_DISK_NUM])) {
-    cprintf("Yielding\n");
-    kswitch(&cur_task->task_frame);
-    cprintf("Continuing\n");
-  }
-
-  int res = disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
-      PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
-
-  return res;
-}
-
 /* swap a page out by moving its contents to swap and freeing the page */
 int swap_out(struct page_info * page) {
   /* first lets find the owning task , assume its just 1 for now */
@@ -163,13 +142,18 @@ int swap_out(struct page_info * page) {
   struct sector_info * sector = container_of(free_node, struct sector_info, sector_node);
   spin_unlock(&free_list_lock);
 
+  sector->vma = page->vma;
+  sector->ref_count = page->pp_ref;
+  sector->pa = 0;
+
+  cprintf("Disk Write of %p\n", page->va);
+
+  disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
+             PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
   if (!page->vma->owner) {
     // It is shared, unmap from all tasks
     struct list * node;
-
-    if (swap_disk_write(page, sector) < 0) {
-      panic("Disk Write Problems!");
-    }
 
     list_foreach(&page->vma->vma_list, node) {
       vma = container_of(node, struct vma, vma_node);
@@ -181,11 +165,22 @@ int swap_out(struct page_info * page) {
 
   } else {
     task = pid2task(page->vma->owner, 0);
+    spin_lock(&task->task_lock);
     vma = page->vma;
-    if (swap_disk_write(page, sector) < 0) {
-      panic("Disk Write Problems!");
-    }
     post_swap_ops(task, vma, page, sector->sector_id);
+    spin_unlock(&task->task_lock);
+  }
+
+  while (!disk_poll(disks[SWAP_DISK_NUM])) {
+    cprintf("Yield\n");
+    kswitch(&cur_task->task_frame);
+  }
+
+  int res = disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
+                       PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
+  if (res < 0) {
+    panic("Disk Write Problems\n");
   }
 
   return 0;
