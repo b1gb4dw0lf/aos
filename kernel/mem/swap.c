@@ -20,6 +20,7 @@ extern void kswitch(struct int_frame  *frame);
 /* we might have to lock the taken and free list for multiprocessing */
 struct spinlock free_list_lock;
 struct spinlock taken_list_lock;
+struct spinlock disk_lock;
 
 /* the sector lists */
 struct list sector_free_list;
@@ -115,7 +116,6 @@ static int post_swap_ops(struct task * task, struct vma * vma, struct page_info 
   if (info.va == 0) return -1;
 
   page->pp_ref = 0;
-  page_free(page);
   update_table_entries(task, info.va, info.va + PAGE_SIZE, sector);
 
   tlb_invalidate(task->task_pml4, (void *) info.va);
@@ -146,10 +146,7 @@ int swap_out(struct page_info * page) {
   sector->ref_count = page->pp_ref;
   sector->pa = 0;
 
-  cprintf("Disk Write of %p\n", page->va);
-
-  disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
-             PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+  void * page_addr = page2kva(page);
 
   if (!page->vma->owner) {
     // It is shared, unmap from all tasks
@@ -171,17 +168,29 @@ int swap_out(struct page_info * page) {
     spin_unlock(&task->task_lock);
   }
 
-  while (!disk_poll(disks[SWAP_DISK_NUM])) {
-    cprintf("Yield\n");
-    kswitch(&cur_task->task_frame);
+  while(holding(&disk_lock)) {
+    sched_yield();
   }
 
-  int res = disk_write(disks[SWAP_DISK_NUM], (void *) page2kva(page),
+  spin_lock(&disk_lock);
+
+  disk_write(disks[SWAP_DISK_NUM], page_addr,
+             PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
+  while (!disk_poll(disks[SWAP_DISK_NUM])) {
+    kswitch(&this_cpu->cpu_task->task_frame);
+  }
+
+  int res = disk_write(disks[SWAP_DISK_NUM], page_addr,
                        PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
   if (res < 0) {
     panic("Disk Write Problems\n");
   }
+
+  spin_unlock(&disk_lock);
+
+  page_free(page);
 
   return 0;
 }
@@ -202,6 +211,10 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
    */
   struct page_info * page;
 
+  while(holding(&disk_lock)) {
+    sched_yield();
+  }
+
   if (sector->ref_count == 1) {
     sector->ref_count--;
     list_remove(&sector->sector_node);
@@ -215,6 +228,8 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
     page->pp_ref = sector->ref_count + 1; /* + 1 since we decrement the ref count above */
     sector->pa = page2pa(page);
 
+    spin_lock(&disk_lock);
+
     disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
         PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
 
@@ -225,6 +240,8 @@ int swap_in(struct task * task, void * addr, struct sector_info * sector, struct
 
     int written = disk_read(disks[SWAP_DISK_NUM], (void *)page2kva(page),
               PAGE_SIZE / SECTOR_SIZE, sector->sector_id);
+
+    spin_unlock(&disk_lock);
   } else {
     page = pa2page(sector->pa);
   }

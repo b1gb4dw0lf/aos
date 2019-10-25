@@ -33,6 +33,8 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
   if (page && (flags & 1)) {
     uint64_t page_flags = 0;
 
+    cprintf("cow\n");
+
     if(found->vm_flags & VM_READ) page_flags |= PAGE_PRESENT;
     if(found->vm_flags & VM_WRITE) page_flags |= PAGE_WRITE;
     if(!(found->vm_flags & VM_EXEC)) page_flags |= PAGE_NO_EXEC;
@@ -97,7 +99,6 @@ int task_page_fault_handler(struct task *task, void *va, int flags)
     struct sector_info * sector = get_swap_sector(task, base);
 
     if (sector) {
-//      cprintf("Swap In\n");
       return swap_in(this_cpu->cpu_task, base, sector, found);
     }
 
